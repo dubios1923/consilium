@@ -1,0 +1,85 @@
+# Praguri Consilium. Nicio valoare de aici nu are default in cod:
+# o cheie lipsa opreste executia, nu produce o presupunere tacuta.
+
+integrity:
+  # R0 – verificari de coerenta a TRANSCRIERII, rulate inainte de orice audit.
+  # Nu sunt reguli de audit: un esec inseamna "nu am incredere in ce am citit",
+  # nu "asociatia a gresit".
+  row_total_tolerance: 0.01       # lei, per rand de apartament
+  column_total_tolerance: 0.01    # lei, per coloana de categorie
+
+  # Recitirea tintita a zonei suspecte.
+  reread_dpi: 300                 # randare peste rezolutia scanului
+  reread_match_tolerance: 0.01    # lei; sub acest prag, doua citiri sunt "identice"
+
+reconciler:
+  # R1 – suma pozițiilor de cheltuială față de totalul general declarat.
+  total_tolerance: 0.01
+
+  # R2 – suma cotelor indivize.
+  cota_sum_target: 100.0
+  cota_sum_tolerance: 0.01
+
+  # R3 – repartizarea conform cheii declarate.
+  # Pragul individual acoperă restul din rotunjire (măsurat: max 0,03 lei pe 28
+  # de apartamente). Pragul agregat este cel care prinde ciupitul sistematic:
+  # rotunjirea reală se compensează, un transfer nu.
+  distribution_per_apartment_tolerance: 0.05
+  distribution_aggregate_tolerance: 0.01
+
+  # Ce câmp de consum corespunde fiecărei categorii repartizate pe consum.
+  # Potrivirea se face pe eticheta categoriei, fără diacritice și fără spații.
+  consumption_field_keywords:
+    apa_rece_mc: ["aparece", "apareceicanal", "aparecerece"]
+    apa_calda_mc: ["apacalda", "apacaldamenajera"]
+    caldura_gcal: ["energietermica", "caldura", "gcal", "incalzire"]
+
+  # R4 – plafonul legal de penalizare.
+  penalty_max_rate_per_day: 0.002
+  penalty_days: 30
+
+  # R5 – suma cheltuielii lunii curente pe apartamente.
+  apartment_total_tolerance: 0.01
+
+  legal_references:
+    R2: >-
+      Legea 196/2018 – cotele-părți indivize aferente apartamentelor însumează
+      întreaga proprietate comună
+    R3: >-
+      Legea 196/2018 – repartizarea cheltuielilor se face conform cheii
+      stabilite pentru fiecare categorie
+    R4: "Legea 196/2018, art. 77 alin. (2)"
+
+legal:
+  # Art. 28 din Legea nr. 196/2018 conține trei temeiuri distincte, cu regimuri
+  # diferite. Modelul, lăsat singur, le contopește într-un „termen legal de 10
+  # zile” care nu există ca atare. Sunt aici, nu în prompt, pentru că
+  # verificatorul de sume nu poate valida o afirmație juridică.
+  art_28_1:
+    reference: "art. 28 alin. (1) din Legea nr. 196/2018"
+    right: >-
+      dreptul proprietarului de a solicita în scris și de a primi copii după
+      orice document al asociației de proprietari
+    deadline_days: null   # legea nu atașează un termen acestui drept
+  art_28_3:
+    reference: "art. 28 alin. (3) din Legea nr. 196/2018"
+    right: >-
+      dreptul de a contesta în scris modul de calcul al cotei de contribuție la
+      cheltuielile asociației
+    contestation_window_days: 10   # de la afișarea listei de plată
+    response_days: 10              # președintele răspunde în scris la contestație
+  art_28_4:
+    reference: "art. 28 alin. (4) din Legea nr. 196/2018"
+    right: >-
+      sesizarea compartimentului specializat al autorității administrației
+      publice locale prevăzut la art. 10, dacă solicitările notificate nu sunt
+      soluționate
+    unresolved_days: 10
+
+drafter:
+  # Ce document producem depinde de starea ferestrei de contestare, nu de
+  # preferința modelului.
+  mode_labels:
+    contestatie: "CONTESTAȚIE PRIVIND MODUL DE CALCUL AL COTEI DE CONTRIBUȚIE"
+    contestatie_termen_necunoscut: "CONTESTAȚIE PRIVIND MODUL DE CALCUL AL COTEI DE CONTRIBUȚIE"
+    cerere_copii: "CERERE DE COMUNICARE A DOCUMENTELOR"
