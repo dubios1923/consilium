@@ -1,0 +1,10 @@
+.venv/
+.git/
+samples/
+artifacts/
+tests/
+tools/
+hoa_agent/
+**/__pycache__/
+.pytest_cache/
+*.pdf

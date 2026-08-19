@@ -1,0 +1,11 @@
+google-adk==2.7.1
+google-genai==2.18.1
+google-cloud-firestore
+google-cloud-storage
+pydantic>=2.13
+PyYAML>=6.0
+python-dotenv>=1.2
+reportlab>=5.0
+fastapi>=0.141
+uvicorn>=0.52
+requests>=2.34
