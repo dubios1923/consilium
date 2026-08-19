@@ -1,0 +1,708 @@
+{
+  "document_id": "LP-2025-11-Z12-CLEAN",
+  "association_ref": "Asociația de Proprietari „Zefir 12”",
+  "period": "2025-11",
+  "declared_totals": {
+    "total_general": 26789.95,
+    "apartment_count": 28
+  },
+  "expense_lines": [
+    {
+      "category": "Apă rece + canal",
+      "amount": 1523.75,
+      "distribution_key": "consum",
+      "source_invoice_ref": "FF-2025-11-004312"
+    },
+    {
+      "category": "Apă caldă menajeră",
+      "amount": 3226.2,
+      "distribution_key": "consum",
+      "source_invoice_ref": "FF-2025-11-004318"
+    },
+    {
+      "category": "Energie termică",
+      "amount": 14500.0,
+      "distribution_key": "cota_indiviza",
+      "source_invoice_ref": "FF-2025-11-000877"
+    },
+    {
+      "category": "Salubritate",
+      "amount": 1800.0,
+      "distribution_key": "persoane",
+      "source_invoice_ref": "FS-2025-11-021145"
+    },
+    {
+      "category": "Întreținere lift",
+      "amount": 1400.0,
+      "distribution_key": "persoane",
+      "source_invoice_ref": "FL-2025-11-000209"
+    },
+    {
+      "category": "Administrare",
+      "amount": 980.0,
+      "distribution_key": "egal",
+      "source_invoice_ref": "CTR-ADM-2024-07"
+    },
+    {
+      "category": "Fond reparații",
+      "amount": 2800.0,
+      "distribution_key": "cota_indiviza",
+      "source_invoice_ref": "HOT-AG-2025-03"
+    },
+    {
+      "category": "Fond de rulment",
+      "amount": 560.0,
+      "distribution_key": "egal",
+      "source_invoice_ref": "HOT-AG-2025-03"
+    }
+  ],
+  "apartment_lines": [
+    {
+      "apartment_no": "1",
+      "persons": 1,
+      "cota_indiviza": 4.63,
+      "charges": {
+        "Apă rece + canal": 18.4,
+        "Apă caldă menajeră": 53.2,
+        "Energie termică": 671.35,
+        "Salubritate": 25.0,
+        "Întreținere lift": 19.44,
+        "Administrare": 35.0,
+        "Fond reparații": 129.64,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 1.6,
+        "apa_calda_mc": 1.4,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 972.03
+    },
+    {
+      "apartment_no": "2",
+      "persons": 4,
+      "cota_indiviza": 4.59,
+      "charges": {
+        "Apă rece + canal": 66.7,
+        "Apă caldă menajeră": 171.0,
+        "Energie termică": 665.55,
+        "Salubritate": 100.0,
+        "Întreținere lift": 77.78,
+        "Administrare": 35.0,
+        "Fond reparații": 128.52,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 5.8,
+        "apa_calda_mc": 4.5,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1264.55
+    },
+    {
+      "apartment_no": "3",
+      "persons": 5,
+      "cota_indiviza": 3.35,
+      "charges": {
+        "Apă rece + canal": 98.9,
+        "Apă caldă menajeră": 212.8,
+        "Energie termică": 485.75,
+        "Salubritate": 125.0,
+        "Întreținere lift": 97.22,
+        "Administrare": 35.0,
+        "Fond reparații": 93.8,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 8.6,
+        "apa_calda_mc": 5.6,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1168.47
+    },
+    {
+      "apartment_no": "4",
+      "persons": 2,
+      "cota_indiviza": 3.01,
+      "charges": {
+        "Apă rece + canal": 48.3,
+        "Apă caldă menajeră": 133.0,
+        "Energie termică": 436.45,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 84.28,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 4.2,
+        "apa_calda_mc": 3.5,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 845.92
+    },
+    {
+      "apartment_no": "5",
+      "persons": 1,
+      "cota_indiviza": 3.18,
+      "charges": {
+        "Apă rece + canal": 17.25,
+        "Apă caldă menajeră": 34.2,
+        "Energie termică": 461.1,
+        "Salubritate": 25.0,
+        "Întreținere lift": 19.44,
+        "Administrare": 35.0,
+        "Fond reparații": 89.04,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 1.5,
+        "apa_calda_mc": 0.9,
+        "caldura_gcal": null
+      },
+      "arrears": 412.6,
+      "penalties": 22.28,
+      "total_due": 1135.91
+    },
+    {
+      "apartment_no": "6",
+      "persons": 4,
+      "cota_indiviza": 2.82,
+      "charges": {
+        "Apă rece + canal": 118.45,
+        "Apă caldă menajeră": 167.2,
+        "Energie termică": 408.9,
+        "Salubritate": 100.0,
+        "Întreținere lift": 77.78,
+        "Administrare": 35.0,
+        "Fond reparații": 78.96,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 10.3,
+        "apa_calda_mc": 4.4,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1006.29
+    },
+    {
+      "apartment_no": "7",
+      "persons": 1,
+      "cota_indiviza": 4.28,
+      "charges": {
+        "Apă rece + canal": 17.25,
+        "Apă caldă menajeră": 34.2,
+        "Energie termică": 620.6,
+        "Salubritate": 25.0,
+        "Întreținere lift": 19.44,
+        "Administrare": 35.0,
+        "Fond reparații": 119.84,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 1.5,
+        "apa_calda_mc": 1.1,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 898.93
+    },
+    {
+      "apartment_no": "8",
+      "persons": 3,
+      "cota_indiviza": 3.35,
+      "charges": {
+        "Apă rece + canal": 51.75,
+        "Apă caldă menajeră": 91.2,
+        "Energie termică": 485.75,
+        "Salubritate": 75.0,
+        "Întreținere lift": 58.33,
+        "Administrare": 35.0,
+        "Fond reparații": 93.8,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 4.5,
+        "apa_calda_mc": 2.4,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 910.83
+    },
+    {
+      "apartment_no": "9",
+      "persons": 2,
+      "cota_indiviza": 4.52,
+      "charges": {
+        "Apă rece + canal": 41.4,
+        "Apă caldă menajeră": 106.4,
+        "Energie termică": 655.4,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 126.56,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.6,
+        "apa_calda_mc": 2.8,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1073.65
+    },
+    {
+      "apartment_no": "10",
+      "persons": 2,
+      "cota_indiviza": 3.34,
+      "charges": {
+        "Apă rece + canal": 44.85,
+        "Apă caldă menajeră": 110.2,
+        "Energie termică": 484.3,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 93.52,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.9,
+        "apa_calda_mc": 2.9,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 876.76
+    },
+    {
+      "apartment_no": "11",
+      "persons": 4,
+      "cota_indiviza": 4.46,
+      "charges": {
+        "Apă rece + canal": 115.0,
+        "Apă caldă menajeră": 216.6,
+        "Energie termică": 646.7,
+        "Salubritate": 100.0,
+        "Întreținere lift": 77.78,
+        "Administrare": 35.0,
+        "Fond reparații": 124.88,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 10.0,
+        "apa_calda_mc": 5.7,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1335.96
+    },
+    {
+      "apartment_no": "12",
+      "persons": 2,
+      "cota_indiviza": 2.85,
+      "charges": {
+        "Apă rece + canal": 41.4,
+        "Apă caldă menajeră": 76.0,
+        "Energie termică": 413.25,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 79.8,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.6,
+        "apa_calda_mc": 2.0,
+        "caldura_gcal": null
+      },
+      "arrears": 178.3,
+      "penalties": 9.63,
+      "total_due": 942.27
+    },
+    {
+      "apartment_no": "13",
+      "persons": 1,
+      "cota_indiviza": 3.05,
+      "charges": {
+        "Apă rece + canal": 14.95,
+        "Apă caldă menajeră": 57.0,
+        "Energie termică": 442.25,
+        "Salubritate": 25.0,
+        "Întreținere lift": 19.44,
+        "Administrare": 35.0,
+        "Fond reparații": 85.4,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 1.3,
+        "apa_calda_mc": 1.5,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 699.04
+    },
+    {
+      "apartment_no": "14",
+      "persons": 2,
+      "cota_indiviza": 3.32,
+      "charges": {
+        "Apă rece + canal": 37.95,
+        "Apă caldă menajeră": 87.4,
+        "Energie termică": 481.4,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 92.96,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.3,
+        "apa_calda_mc": 2.3,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 843.6
+    },
+    {
+      "apartment_no": "15",
+      "persons": 2,
+      "cota_indiviza": 2.61,
+      "charges": {
+        "Apă rece + canal": 49.45,
+        "Apă caldă menajeră": 110.2,
+        "Energie termică": 378.45,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 73.08,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 4.3,
+        "apa_calda_mc": 2.9,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 755.07
+    },
+    {
+      "apartment_no": "16",
+      "persons": 3,
+      "cota_indiviza": 4.84,
+      "charges": {
+        "Apă rece + canal": 42.55,
+        "Apă caldă menajeră": 121.6,
+        "Energie termică": 701.8,
+        "Salubritate": 75.0,
+        "Întreținere lift": 58.33,
+        "Administrare": 35.0,
+        "Fond reparații": 135.52,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.7,
+        "apa_calda_mc": 3.2,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1189.8
+    },
+    {
+      "apartment_no": "17",
+      "persons": 1,
+      "cota_indiviza": 3.15,
+      "charges": {
+        "Apă rece + canal": 25.3,
+        "Apă caldă menajeră": 38.0,
+        "Energie termică": 456.75,
+        "Salubritate": 25.0,
+        "Întreținere lift": 19.44,
+        "Administrare": 35.0,
+        "Fond reparații": 88.2,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 2.2,
+        "apa_calda_mc": 1.0,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 707.69
+    },
+    {
+      "apartment_no": "18",
+      "persons": 2,
+      "cota_indiviza": 2.55,
+      "charges": {
+        "Apă rece + canal": 54.05,
+        "Apă caldă menajeră": 60.8,
+        "Energie termică": 369.75,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 71.4,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 4.7,
+        "apa_calda_mc": 1.6,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 699.89
+    },
+    {
+      "apartment_no": "19",
+      "persons": 1,
+      "cota_indiviza": 4.83,
+      "charges": {
+        "Apă rece + canal": 27.6,
+        "Apă caldă menajeră": 60.8,
+        "Energie termică": 700.35,
+        "Salubritate": 25.0,
+        "Întreținere lift": 19.44,
+        "Administrare": 35.0,
+        "Fond reparații": 135.24,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 2.4,
+        "apa_calda_mc": 1.6,
+        "caldura_gcal": null
+      },
+      "arrears": 903.15,
+      "penalties": 48.77,
+      "total_due": 1975.35
+    },
+    {
+      "apartment_no": "20",
+      "persons": 2,
+      "cota_indiviza": 4.86,
+      "charges": {
+        "Apă rece + canal": 47.15,
+        "Apă caldă menajeră": 72.2,
+        "Energie termică": 704.7,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 136.08,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 4.1,
+        "apa_calda_mc": 1.9,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1104.02
+    },
+    {
+      "apartment_no": "21",
+      "persons": 2,
+      "cota_indiviza": 3.35,
+      "charges": {
+        "Apă rece + canal": 41.4,
+        "Apă caldă menajeră": 68.4,
+        "Energie termică": 485.75,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 93.8,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.6,
+        "apa_calda_mc": 1.8,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 833.24
+    },
+    {
+      "apartment_no": "22",
+      "persons": 3,
+      "cota_indiviza": 2.97,
+      "charges": {
+        "Apă rece + canal": 73.6,
+        "Apă caldă menajeră": 197.6,
+        "Energie termică": 430.65,
+        "Salubritate": 75.0,
+        "Întreținere lift": 58.33,
+        "Administrare": 35.0,
+        "Fond reparații": 83.16,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 6.4,
+        "apa_calda_mc": 5.2,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 973.34
+    },
+    {
+      "apartment_no": "23",
+      "persons": 3,
+      "cota_indiviza": 3.54,
+      "charges": {
+        "Apă rece + canal": 75.9,
+        "Apă caldă menajeră": 136.8,
+        "Energie termică": 513.3,
+        "Salubritate": 75.0,
+        "Întreținere lift": 58.33,
+        "Administrare": 35.0,
+        "Fond reparații": 99.12,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 6.6,
+        "apa_calda_mc": 3.6,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1013.45
+    },
+    {
+      "apartment_no": "24",
+      "persons": 3,
+      "cota_indiviza": 4.13,
+      "charges": {
+        "Apă rece + canal": 44.85,
+        "Apă caldă menajeră": 159.6,
+        "Energie termică": 598.85,
+        "Salubritate": 75.0,
+        "Întreținere lift": 58.33,
+        "Administrare": 35.0,
+        "Fond reparații": 115.64,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.9,
+        "apa_calda_mc": 4.2,
+        "caldura_gcal": null
+      },
+      "arrears": 256.0,
+      "penalties": 13.82,
+      "total_due": 1377.09
+    },
+    {
+      "apartment_no": "25",
+      "persons": 4,
+      "cota_indiviza": 3.03,
+      "charges": {
+        "Apă rece + canal": 57.5,
+        "Apă caldă menajeră": 197.6,
+        "Energie termică": 439.35,
+        "Salubritate": 100.0,
+        "Întreținere lift": 77.78,
+        "Administrare": 35.0,
+        "Fond reparații": 84.84,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 5.0,
+        "apa_calda_mc": 5.2,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1012.07
+    },
+    {
+      "apartment_no": "26",
+      "persons": 2,
+      "cota_indiviza": 2.81,
+      "charges": {
+        "Apă rece + canal": 43.7,
+        "Apă caldă menajeră": 79.8,
+        "Energie termică": 407.45,
+        "Salubritate": 50.0,
+        "Întreținere lift": 38.89,
+        "Administrare": 35.0,
+        "Fond reparații": 78.68,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 3.8,
+        "apa_calda_mc": 2.1,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 753.52
+    },
+    {
+      "apartment_no": "27",
+      "persons": 5,
+      "cota_indiviza": 2.57,
+      "charges": {
+        "Apă rece + canal": 127.65,
+        "Apă caldă menajeră": 182.4,
+        "Energie termică": 372.65,
+        "Salubritate": 125.0,
+        "Întreținere lift": 97.22,
+        "Administrare": 35.0,
+        "Fond reparații": 71.96,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 11.1,
+        "apa_calda_mc": 4.8,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1031.88
+    },
+    {
+      "apartment_no": "28",
+      "persons": 5,
+      "cota_indiviza": 4.01,
+      "charges": {
+        "Apă rece + canal": 80.5,
+        "Apă caldă menajeră": 182.4,
+        "Energie termică": 581.45,
+        "Salubritate": 125.0,
+        "Întreținere lift": 97.25,
+        "Administrare": 35.0,
+        "Fond reparații": 112.28,
+        "Fond de rulment": 20.0
+      },
+      "consumption": {
+        "apa_rece_mc": 7.0,
+        "apa_calda_mc": 4.8,
+        "caldura_gcal": null
+      },
+      "arrears": 0.0,
+      "penalties": 0.0,
+      "total_due": 1233.88
+    }
+  ],
+  "extraction_confidence": {
+    "low_confidence_fields": []
+  }
+}
