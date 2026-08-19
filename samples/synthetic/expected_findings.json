@@ -1,0 +1,493 @@
+{
+  "generator": "tools/gen_samples.py",
+  "seed": 20251119,
+  "period": "2025-11",
+  "apartment_count": 28,
+  "disclaimer": "Date complet fictive. Nicio corespondență cu persoane, imobile, asociații sau documente reale.",
+  "penalty_model": {
+    "legal_cap_rate_per_day": 0.002,
+    "days": 30,
+    "legal_reference": "Legea 196/2018, art. 77 alin. (2)"
+  },
+  "samples": {
+    "sample_clean.pdf": {
+      "variant": "clean",
+      "consumption_annex_present": true,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 8,
+        "expense_lines_unverifiable": []
+      },
+      "expected_finding_count": 0,
+      "expected_finding_ids": [],
+      "declared_total_general": 26789.95,
+      "computed_expense_sum": 26789.95
+    },
+    "sample_clean_scanned.pdf": {
+      "variant": "clean",
+      "consumption_annex_present": true,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 8,
+        "expense_lines_unverifiable": []
+      },
+      "expected_finding_count": 0,
+      "expected_finding_ids": [],
+      "declared_total_general": 26789.95,
+      "computed_expense_sum": 26789.95,
+      "derived_from": "sample_clean.pdf",
+      "degradation": {
+        "dpi": 150,
+        "max_skew_degrees": 1.5,
+        "gaussian_noise_sigma": 4.0,
+        "jpeg_quality": 75
+      },
+      "note": "Aceleasi constatari plantate ca in documentul sursa; difera doar calitatea imaginii."
+    },
+    "sample_errors.pdf": {
+      "variant": "errors",
+      "consumption_annex_present": false,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 6,
+        "expense_lines_unverifiable": [
+          "Apă rece + canal",
+          "Apă caldă menajeră"
+        ]
+      },
+      "expected_finding_count": 4,
+      "expected_finding_ids": [
+        "ERR-001",
+        "ERR-002",
+        "ERR-003",
+        "COV-001"
+      ],
+      "declared_total_general": 27689.95,
+      "computed_expense_sum": 26789.95
+    },
+    "sample_errors_scanned.pdf": {
+      "variant": "errors",
+      "consumption_annex_present": false,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 6,
+        "expense_lines_unverifiable": [
+          "Apă rece + canal",
+          "Apă caldă menajeră"
+        ]
+      },
+      "expected_finding_count": 4,
+      "expected_finding_ids": [
+        "ERR-001",
+        "ERR-002",
+        "ERR-003",
+        "COV-001"
+      ],
+      "declared_total_general": 27689.95,
+      "computed_expense_sum": 26789.95,
+      "derived_from": "sample_errors.pdf",
+      "degradation": {
+        "dpi": 150,
+        "max_skew_degrees": 1.5,
+        "gaussian_noise_sigma": 4.0,
+        "jpeg_quality": 75
+      },
+      "note": "Aceleasi constatari plantate ca in documentul sursa; difera doar calitatea imaginii."
+    },
+    "sample_penalties.pdf": {
+      "variant": "penalties",
+      "consumption_annex_present": true,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 8,
+        "expense_lines_unverifiable": []
+      },
+      "expected_finding_count": 4,
+      "expected_finding_ids": [
+        "PEN-001",
+        "PEN-002",
+        "PEN-003",
+        "PEN-004"
+      ],
+      "declared_total_general": 26789.95,
+      "computed_expense_sum": 26789.95
+    },
+    "sample_penalties_scanned.pdf": {
+      "variant": "penalties",
+      "consumption_annex_present": true,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 8,
+        "expense_lines_unverifiable": []
+      },
+      "expected_finding_count": 4,
+      "expected_finding_ids": [
+        "PEN-001",
+        "PEN-002",
+        "PEN-003",
+        "PEN-004"
+      ],
+      "declared_total_general": 26789.95,
+      "computed_expense_sum": 26789.95,
+      "derived_from": "sample_penalties.pdf",
+      "degradation": {
+        "dpi": 150,
+        "max_skew_degrees": 1.5,
+        "gaussian_noise_sigma": 4.0,
+        "jpeg_quality": 75
+      },
+      "note": "Aceleasi constatari plantate ca in documentul sursa; difera doar calitatea imaginii."
+    }
+  },
+  "findings": [
+    {
+      "id": "ERR-001",
+      "sample": "sample_errors.pdf",
+      "rule_id": "R1",
+      "type": "declared_total_mismatch",
+      "severity": "high",
+      "location": {
+        "section": "Tabel cheltuieli pe categorii",
+        "field": "TOTAL GENERAL"
+      },
+      "expected_value": 26789.95,
+      "found_value": 27689.95,
+      "amount_involved": 900.0,
+      "legal_reference": null,
+      "description": "Totalul general declarat depaseste suma celor opt pozitii de cheltuiala din tabel."
+    },
+    {
+      "id": "ERR-002",
+      "sample": "sample_errors.pdf",
+      "rule_id": "R3",
+      "type": "wrong_distribution_key",
+      "severity": "high",
+      "location": {
+        "section": "Tabel apartamente",
+        "column": "Energie termică",
+        "declared_distribution_key": "cota_indiviza",
+        "actual_distribution_key": "consum"
+      },
+      "expected_value": "repartizare proportionala cu cota indiviza",
+      "found_value": "repartizare proportionala cu consumul de apa calda",
+      "amount_involved": 3343.87,
+      "affected_apartments": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28"
+      ],
+      "details": [
+        {
+          "apartment_no": "1",
+          "expected_value": 671.35,
+          "found_value": 239.1,
+          "delta": -432.25
+        },
+        {
+          "apartment_no": "2",
+          "expected_value": 665.55,
+          "found_value": 768.55,
+          "delta": 103.0
+        },
+        {
+          "apartment_no": "3",
+          "expected_value": 485.75,
+          "found_value": 956.42,
+          "delta": 470.67
+        },
+        {
+          "apartment_no": "4",
+          "expected_value": 436.45,
+          "found_value": 597.76,
+          "delta": 161.31
+        },
+        {
+          "apartment_no": "5",
+          "expected_value": 461.1,
+          "found_value": 153.71,
+          "delta": -307.39
+        },
+        {
+          "apartment_no": "6",
+          "expected_value": 408.9,
+          "found_value": 751.47,
+          "delta": 342.57
+        },
+        {
+          "apartment_no": "7",
+          "expected_value": 620.6,
+          "found_value": 187.87,
+          "delta": -432.73
+        },
+        {
+          "apartment_no": "8",
+          "expected_value": 485.75,
+          "found_value": 409.89,
+          "delta": -75.86
+        },
+        {
+          "apartment_no": "9",
+          "expected_value": 655.4,
+          "found_value": 478.21,
+          "delta": -177.19
+        },
+        {
+          "apartment_no": "10",
+          "expected_value": 484.3,
+          "found_value": 495.29,
+          "delta": 10.99
+        },
+        {
+          "apartment_no": "11",
+          "expected_value": 646.7,
+          "found_value": 973.5,
+          "delta": 326.8
+        },
+        {
+          "apartment_no": "12",
+          "expected_value": 413.25,
+          "found_value": 341.58,
+          "delta": -71.67
+        },
+        {
+          "apartment_no": "13",
+          "expected_value": 442.25,
+          "found_value": 256.18,
+          "delta": -186.07
+        },
+        {
+          "apartment_no": "14",
+          "expected_value": 481.4,
+          "found_value": 392.82,
+          "delta": -88.58
+        },
+        {
+          "apartment_no": "15",
+          "expected_value": 378.45,
+          "found_value": 495.29,
+          "delta": 116.84
+        },
+        {
+          "apartment_no": "16",
+          "expected_value": 701.8,
+          "found_value": 546.53,
+          "delta": -155.27
+        },
+        {
+          "apartment_no": "17",
+          "expected_value": 456.75,
+          "found_value": 170.79,
+          "delta": -285.96
+        },
+        {
+          "apartment_no": "18",
+          "expected_value": 369.75,
+          "found_value": 273.26,
+          "delta": -96.49
+        },
+        {
+          "apartment_no": "19",
+          "expected_value": 700.35,
+          "found_value": 273.26,
+          "delta": -427.09
+        },
+        {
+          "apartment_no": "20",
+          "expected_value": 704.7,
+          "found_value": 324.5,
+          "delta": -380.2
+        },
+        {
+          "apartment_no": "21",
+          "expected_value": 485.75,
+          "found_value": 307.42,
+          "delta": -178.33
+        },
+        {
+          "apartment_no": "22",
+          "expected_value": 430.65,
+          "found_value": 888.1,
+          "delta": 457.45
+        },
+        {
+          "apartment_no": "23",
+          "expected_value": 513.3,
+          "found_value": 614.84,
+          "delta": 101.54
+        },
+        {
+          "apartment_no": "24",
+          "expected_value": 598.85,
+          "found_value": 717.31,
+          "delta": 118.46
+        },
+        {
+          "apartment_no": "25",
+          "expected_value": 439.35,
+          "found_value": 888.1,
+          "delta": 448.75
+        },
+        {
+          "apartment_no": "26",
+          "expected_value": 407.45,
+          "found_value": 358.66,
+          "delta": -48.79
+        },
+        {
+          "apartment_no": "27",
+          "expected_value": 372.65,
+          "found_value": 819.79,
+          "delta": 447.14
+        },
+        {
+          "apartment_no": "28",
+          "expected_value": 581.45,
+          "found_value": 819.8,
+          "delta": 238.35
+        }
+      ],
+      "legal_reference": "Legea 196/2018 – repartizarea cheltuielilor asociatiei de proprietari se face conform cheii stabilite pentru fiecare categorie",
+      "description": "Energia termica este declarata cu cheia „cotă indiviză”, dar sumele individuale urmeaza consumul de apa calda."
+    },
+    {
+      "id": "ERR-003",
+      "sample": "sample_errors.pdf",
+      "rule_id": "R5",
+      "type": "apartment_sum_mismatch",
+      "severity": "high",
+      "location": {
+        "section": "Tabel apartamente",
+        "field": "TOTAL coloana „Total lună curentă”"
+      },
+      "expected_value": 27689.95,
+      "found_value": 26789.95,
+      "amount_involved": 900.0,
+      "legal_reference": null,
+      "description": "Consecinta directa a ERR-001: suma cheltuielilor curente repartizate pe apartamente nu atinge totalul general declarat."
+    },
+    {
+      "id": "COV-001",
+      "sample": "sample_errors.pdf",
+      "rule_id": "R3",
+      "type": "unverifiable_distribution",
+      "severity": "info",
+      "location": {
+        "section": "Document",
+        "field": "anexa de consumuri contorizate"
+      },
+      "expected_value": "anexă cu consumul individual (mc) pe apartament",
+      "found_value": null,
+      "amount_involved": 4749.95,
+      "affected_categories": [
+        "Apă rece + canal",
+        "Apă caldă menajeră"
+      ],
+      "legal_reference": null,
+      "description": "Documentul nu publica consumurile individuale, deci repartizarea pozitiilor pe consum nu poate fi verificata. Proprietarul trebuie sa ceara anexa de consumuri."
+    },
+    {
+      "id": "PEN-001",
+      "sample": "sample_penalties.pdf",
+      "rule_id": "R2",
+      "type": "cota_indiviza_sum_mismatch",
+      "severity": "high",
+      "location": {
+        "section": "Tabel apartamente",
+        "field": "TOTAL coloana „Cotă indiviză %”"
+      },
+      "expected_value": 100.0,
+      "found_value": 99.2,
+      "amount_involved": null,
+      "legal_reference": "Legea 196/2018 – cotele-parti indivize aferente apartamentelor insumeaza intreaga proprietate comuna (100%)",
+      "description": "Suma cotelor indivize declarate este subunitara, deci o parte din proprietatea comuna nu are titular de cheltuiala."
+    },
+    {
+      "id": "PEN-002",
+      "sample": "sample_penalties.pdf",
+      "rule_id": "R4",
+      "type": "penalty_over_legal_cap",
+      "severity": "high",
+      "location": {
+        "section": "Tabel apartamente",
+        "apartment_no": "3",
+        "column": "Penalizări"
+      },
+      "expected_value": 38.4,
+      "found_value": 96.0,
+      "amount_involved": 57.6,
+      "applied_rate_per_day": 0.005,
+      "legal_cap_rate_per_day": 0.002,
+      "days": 30,
+      "arrears": 640.0,
+      "legal_reference": "Legea 196/2018, art. 77 alin. (2)",
+      "description": "Penalizarea aplicata apartamentului 3 corespunde unei cote de 0.50%/zi, peste plafonul legal de 0.2%/zi."
+    },
+    {
+      "id": "PEN-003",
+      "sample": "sample_penalties.pdf",
+      "rule_id": "R4",
+      "type": "penalty_over_legal_cap",
+      "severity": "high",
+      "location": {
+        "section": "Tabel apartamente",
+        "apartment_no": "12",
+        "column": "Penalizări"
+      },
+      "expected_value": 10.7,
+      "found_value": 18.72,
+      "amount_involved": 8.02,
+      "applied_rate_per_day": 0.0035,
+      "legal_cap_rate_per_day": 0.002,
+      "days": 30,
+      "arrears": 178.3,
+      "legal_reference": "Legea 196/2018, art. 77 alin. (2)",
+      "description": "Penalizarea aplicata apartamentului 12 corespunde unei cote de 0.35%/zi, peste plafonul legal de 0.2%/zi."
+    },
+    {
+      "id": "PEN-004",
+      "sample": "sample_penalties.pdf",
+      "rule_id": "R4",
+      "type": "penalty_over_legal_cap",
+      "severity": "high",
+      "location": {
+        "section": "Tabel apartamente",
+        "apartment_no": "17",
+        "column": "Penalizări"
+      },
+      "expected_value": 67.23,
+      "found_value": 141.18,
+      "amount_involved": 73.95,
+      "applied_rate_per_day": 0.0042,
+      "legal_cap_rate_per_day": 0.002,
+      "days": 30,
+      "arrears": 1120.45,
+      "legal_reference": "Legea 196/2018, art. 77 alin. (2)",
+      "description": "Penalizarea aplicata apartamentului 17 corespunde unei cote de 0.42%/zi, peste plafonul legal de 0.2%/zi."
+    }
+  ]
+}
