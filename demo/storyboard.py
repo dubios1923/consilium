@@ -210,18 +210,26 @@ STORYBOARD: list[Scene] = [
         key="proof",
         action="terminal",
         commands=[
+            # Serviciile intai: URL-ul .run.app e dovada ceruta explicit de
+            # regulament ca backendul ruleaza pe Google Cloud, iar captura
+            # headless nu are bara de adrese unde sa se vada altfel.
+            ["gcloud", "run", "services", "list", "--region=europe-west1",
+             "--format=table(metadata.name,status.url)"],
+            # Doar executiile incheiate: o coloana goala pentru una inca in curs
+            # se citeste gresit ca esec.
             ["gcloud", "run", "jobs", "executions", "list",
-             "--job=consilium-audit", "--region=europe-west1",
-             "--limit=4", "--format=table(metadata.name,status.succeededCount)"],
+             "--job=consilium-audit", "--region=europe-west1", "--limit=4",
+             "--filter=status.succeededCount>0",
+             "--format=table(metadata.name,status.succeededCount)"],
             ["gcloud", "storage", "ls", "gs://consilium-intake-ab7x21/output/"],
         ],
         narration=(
-            "None of that was staged. Each upload triggered a Cloud Run job "
-            "execution through Eventarc, and each finished audit wrote its letter, "
-            "its findings and its report into the bucket, under its own case "
-            "folder."
+            "None of that was staged. Both services run on Cloud Run, each upload "
+            "triggered a job execution through Eventarc, and each finished audit "
+            "wrote its letter, its findings and its report into the bucket under "
+            "its own case folder."
         ),
-        min_seconds=14.0,
+        min_seconds=18.0,
     ),
     Scene(
         key="architecture",
