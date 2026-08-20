@@ -17,6 +17,16 @@ JOB="${JOB:-consilium-audit}"
 LAUNCHER="${LAUNCHER:-consilium-launcher}"
 TRIGGER="${TRIGGER:-consilium-intake}"
 SA_NAME="${SA_NAME:-consilium-agent}"
+
+# Livrarea pe email e opțională. Se activează doar dacă ambele sunt prezente în
+# mediul din care rulezi deploy-ul:
+#   CONSILIUM_DELIVERY_TO   destinatarul
+#   RESEND_API_KEY          cheia providerului
+# Cheia NU intră în specul jobului: ajunge în Secret Manager și e montată ca
+# variabilă la runtime. Fără ele, pipeline-ul rulează exact ca înainte.
+DELIVERY_TO="${CONSILIUM_DELIVERY_TO:-}"
+DELIVERY_FROM="${CONSILIUM_DELIVERY_FROM:-Consilium <consilium@datahappens.ro>}"
+DELIVERY_SECRET="${DELIVERY_SECRET:-consilium-delivery-api-key}"
 SA="${SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
 
@@ -66,6 +76,27 @@ retry gcloud projects add-iam-policy-binding "$PROJECT" \
   --member="serviceAccount:${GCS_SA}" --role=roles/pubsub.publisher \
   --condition=None --quiet >/dev/null
 
+DELIVERY_ENV=""
+DELIVERY_SECRETS=""
+if [ -n "$DELIVERY_TO" ] && [ -n "${RESEND_API_KEY:-}" ]; then
+  say "livrare pe email: secret + acces"
+  gcloud services enable secretmanager.googleapis.com --project="$PROJECT"
+  if ! gcloud secrets describe "$DELIVERY_SECRET" --project="$PROJECT" >/dev/null 2>&1; then
+    gcloud secrets create "$DELIVERY_SECRET" --project="$PROJECT" \
+      --replication-policy=automatic
+  fi
+  printf '%s' "$RESEND_API_KEY" | gcloud secrets versions add "$DELIVERY_SECRET" \
+    --project="$PROJECT" --data-file=- >/dev/null
+  retry gcloud secrets add-iam-policy-binding "$DELIVERY_SECRET" \
+    --project="$PROJECT" --member="serviceAccount:${SA}" \
+    --role=roles/secretmanager.secretAccessor --quiet >/dev/null
+  DELIVERY_ENV=",CONSILIUM_DELIVERY_TO=${DELIVERY_TO},CONSILIUM_DELIVERY_FROM=${DELIVERY_FROM}"
+  DELIVERY_SECRETS="--set-secrets=CONSILIUM_DELIVERY_API_KEY=${DELIVERY_SECRET}:latest"
+  echo "  destinatar: $DELIVERY_TO"
+else
+  say "livrare pe email: dezactivată (fără CONSILIUM_DELIVERY_TO / RESEND_API_KEY)"
+fi
+
 say "Cloud Run Job (pipeline-ul propriu-zis)"
 # GOOGLE_CLOUD_LOCATION ar fi altfel moștenit din --region; Vertex are nevoie de
 # `global`, deci îl fixăm explicit.
@@ -73,7 +104,8 @@ gcloud run jobs deploy "$JOB" \
   --source . --region="$REGION" --project="$PROJECT" \
   --service-account="$SA" \
   --task-timeout=3600s --max-retries=1 --memory=2Gi --cpu=2 \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_LOCATION=global,CONSILIUM_VERTEX_LOCATION=global,CONSILIUM_OUTPUT_PREFIX=output/,CONSILIUM_ROLE=job"
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_LOCATION=global,CONSILIUM_VERTEX_LOCATION=global,CONSILIUM_OUTPUT_PREFIX=output/,CONSILIUM_ROLE=job${DELIVERY_ENV}" \
+  ${DELIVERY_SECRETS}
 
 say "override explicit al locației Vertex"
 gcloud run jobs update "$JOB" --region="$REGION" --project="$PROJECT" \

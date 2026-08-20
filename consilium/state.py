@@ -25,6 +25,7 @@ AuditStatus = Literal[
     "verifying",
     "reconciling",
     "drafting",
+    "delivering",
     "done",
     "failed",
 ]
@@ -35,6 +36,7 @@ STATUS_ORDER: tuple[AuditStatus, ...] = (
     "verifying",
     "reconciling",
     "drafting",
+    "delivering",
     "done",
 )
 
@@ -87,6 +89,7 @@ class AuditRecord:
     findings: list[dict[str, Any]] = field(default_factory=list)
     coverage_report: dict[str, Any] | None = None
     artifact_uris: list[str] = field(default_factory=list)
+    delivery: dict[str, Any] | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -229,6 +232,18 @@ class AuditStore(ABC):
         record = self._load(audit_id)
         record.findings = findings
         record.coverage_report = coverage_report
+        record.updated_at = time.time()
+        self.put(record)
+        return record
+
+    def set_delivery(self, audit_id: str, delivery: dict[str, Any]) -> AuditRecord:
+        """Consemneaza rezultatul livrarii. Nu schimba starea auditului.
+
+        Un email netrimis nu invalideaza un audit reusit: artefactele sunt deja
+        in GCS si constatarile in Firestore.
+        """
+        record = self._load(audit_id)
+        record.delivery = delivery
         record.updated_at = time.time()
         self.put(record)
         return record

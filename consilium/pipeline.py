@@ -13,6 +13,7 @@ Fiecare tranziție scrie în Firestore înainte și după: dacă pipeline-ul moa
 
 from __future__ import annotations
 
+import tempfile
 import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from google.adk.events import Event, EventActions
 from google.genai import types
 from pydantic import ConfigDict
 
+from consilium import delivery as delivery_module
 from consilium import drafter as drafter_module
 from consilium.config import Config
 from consilium.extractor import extract, resolve_integrity
@@ -43,6 +45,7 @@ STEP_EXTRACT = "extract"
 STEP_VERIFY = "verify"
 STEP_RECONCILE = "reconcile"
 STEP_DRAFT = "draft"
+STEP_DELIVER = "deliver"
 
 
 @dataclass
@@ -302,10 +305,87 @@ class DrafterAgent(_Stage):
             destination, audit_id, payment, result, draft
         )
         self.pipeline.store.add_artifacts(audit_id, uris)
+
+        # Copie locală a scrisorii, pentru pasul de livrare: `write_artifacts`
+        # încarcă în GCS dintr-un director temporar care apoi dispare.
+        local_dir = Path(tempfile.gettempdir()) / "consilium" / audit_id
+        local_dir.mkdir(parents=True, exist_ok=True)
+        local_pdf = drafter_module.render_letter_pdf(
+            draft, local_dir / f"cerere_documente_{audit_id}.pdf"
+        )
+
         return f"Scrisoare redactată; {len(uris)} artefacte scrise.", {
             "artifact_uris": uris,
+            "letter_local_path": str(local_pdf),
+            "requested_documents": list(draft.requested_documents),
             "_log": {"artifact_uris": uris},
         }
+
+
+class DeliveryAgent(_Stage):
+    """Trimite scrisoarea pe email. Pas opțional care nu poate rupe auditul.
+
+    Nu ridică niciodată: dacă livrarea eșuează, motivul ajunge în Firestore sub
+    `delivery`, iar auditul rămâne reușit. Artefactele sunt deja în GCS, deci
+    scrisoarea nu se pierde — doar nu ajunge singură la destinatar.
+    """
+
+    def execute(self, ctx: InvocationContext) -> tuple[str, dict[str, Any]]:
+        state = ctx.session.state
+        audit_id = state["audit_id"]
+        config = delivery_module.DeliveryConfig.from_env()
+
+        if config is None:
+            outcome = delivery_module.DeliveryOutcome(
+                status="skipped", error="livrare neconfigurată"
+            )
+        else:
+            outcome = self._send(state, audit_id, config)
+
+        self.pipeline.store.set_delivery(audit_id, outcome.to_dict())
+        summary = f"Livrare: {outcome.status}"
+        if outcome.recipient:
+            summary += f" către {outcome.recipient}"
+        if outcome.error:
+            summary += f" — {outcome.error}"
+        return summary, {
+            "delivery_status": outcome.status,
+            "_log": {"delivery": outcome.status, "error": outcome.error},
+        }
+
+    def _send(
+        self,
+        state: dict[str, Any],
+        audit_id: str,
+        config: delivery_module.DeliveryConfig,
+    ) -> delivery_module.DeliveryOutcome:
+        try:
+            local_pdf = state.get("letter_local_path")
+            if not local_pdf:
+                return delivery_module.DeliveryOutcome(
+                    status="failed",
+                    recipient=config.recipient,
+                    error="calea locală a scrisorii lipsește din starea sesiunii",
+                )
+            payment = PaymentList.model_validate_json(state["payment_json"])
+            resolution = resolution_from_state(state["resolution"])
+            result = run_audit_rules(
+                payment, self.pipeline.config, resolution, _as_of(state)
+            )
+            return delivery_module.deliver(
+                payment,
+                result,
+                state.get("requested_documents", []),
+                local_pdf,
+                config,
+                audit_id=audit_id,
+            )
+        except Exception as error:  # noqa: BLE001 - livrarea nu rupe auditul
+            return delivery_module.DeliveryOutcome(
+                status="failed",
+                recipient=config.recipient,
+                error=f"{type(error).__name__}: {error}",
+            )
 
 
 # --------------------------------------------------------------------------
@@ -349,6 +429,13 @@ def build_pipeline(pipeline: PipelineContext) -> SequentialAgent:
                 pipeline=pipeline,
                 step=STEP_DRAFT,
                 status="drafting",
+            ),
+            DeliveryAgent(
+                name="delivery",
+                description="Trimite scrisoarea pe email, dacă e configurat.",
+                pipeline=pipeline,
+                step=STEP_DELIVER,
+                status="delivering",
             ),
         ],
     )
