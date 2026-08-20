@@ -5,6 +5,8 @@ proprietari* (homeowners' associations). You drop a PDF into a bucket; you get
 back the findings, the coverage report, and the formal document request, on the
 correct legal basis.
 
+**Live inspection page:** https://consilium-dashboard-aq2ftfgfkq-ew.a.run.app
+
 > **The system's output is Romanian by design.** The generated letter is a legal
 > document addressed to a Romanian homeowners' association, the findings quote
 > Romanian statute, and the amounts use Romanian number formatting
@@ -124,14 +126,15 @@ flowchart TB
     D --> OUT
     M -.->|"PDF attachment"| MAIL["email"]
     OUT -.->|"output/ prefix ignored<br/>in launcher AND in job"| EV
-    FS --> UI["hoa_agent<br/>ADK, read-only"]
+    FS --> UI["consilium-dashboard<br/>read-only page"]
+    FS --> AG["hoa_agent<br/>ADK agent, read-only"]
 
     classDef model fill:#8b3a3a,stroke:#5c2626,color:#fff
     classDef det fill:#2d5a4a,stroke:#1c3b30,color:#fff
     classDef infra fill:#3a4a6b,stroke:#26314a,color:#fff
     class T,E,D model
     class I,R,M det
-    class EV,LA,FS,UI,REJ,MAIL infra
+    class EV,LA,FS,UI,AG,REJ,MAIL infra
 ```
 
 **Red = touches a model. Green = deterministic, no network.**
@@ -563,10 +566,47 @@ production: two uploads, six artifacts written, **two executions total**.
 
 ---
 
+### The inspection page
+
+`consilium-dashboard` is a Cloud Run service that reads Firestore and serves the
+letter from Cloud Storage. It lists every case with its status, and each case
+detail shows the triage verdict, the findings with their amounts and legal
+basis, the coverage report, the per-stage timings, the delivery result and the
+letter itself.
+
+It is read only by construction, not by convention: a test asserts the app
+exposes only `GET` and `HEAD`. An audit starts by putting a PDF in the bucket,
+never by pressing a button, so a refresh during a demo cannot launch parallel
+processing of the same document. The list auto-refreshes only while something is
+running.
+
+### The demo video
+
+The four minute demo is generated rather than filmed:
+
+```bash
+PYTHONPATH=. .venv/bin/python tools/narrate.py --voice en-US-Studio-O --out-dir demo/audio_o
+PYTHONPATH=. .venv/bin/python tools/record_demo.py
+PYTHONPATH=. .venv/bin/python tools/build_demo.py --audio demo/audio_o/manifest.json
+```
+
+`demo/storyboard.py` holds the narration and the visual action together, so a
+rewritten sentence cannot desynchronise from what is on screen: scene length
+comes from the generated audio, never from a hand-written number. The recorder
+drives Chromium through Playwright and captures lossless frames, which avoids
+the Wayland screen-capture portal entirely and is why the whole thing reruns
+unattended. The uploads it performs are real `gcloud` calls against the real
+bucket, and one scene runs `gcloud run jobs executions list` live so the claim
+that this ran on Google Cloud is visible rather than asserted. The assembler
+fits each scene to its narration; a wait filmed in two minutes against a
+nineteen second line becomes a speed-up with a badge on screen.
+
+---
+
 ## 6. Tests
 
 ```bash
-.venv/bin/python -m pytest tests/ -q      # 128 tests, ~1.3 s
+.venv/bin/python -m pytest tests/ -q      # 257 tests, ~5 s
 .venv/bin/ruff check consilium/ job/ tools/ tests/ hoa_agent/
 ```
 
@@ -574,14 +614,19 @@ All of them run offline. None calls a model.
 
 | suite | tests | what it guarantees |
 |---|---|---|
+| `test_delivery.py` | 71 | Delivery is opt-in and cannot fail an audit: half a configuration counts as disabled, transport errors and provider rejections come back recorded rather than raised, and a summary that would quote an uncomputed figure is refused before anything is sent. Also scans every tracked source file for key-shaped strings, with a positive control so the scanner cannot pass by being too narrow. |
 | `test_acceptance.py` | 21 | The reconciler finds **every** planted finding on `sample_errors` and `sample_penalties`, and **zero** on `sample_clean`. Each finding checked individually against `expected_findings.json`. Includes the scan acceptance case: R0 catches the bad cell, zero false audit findings, the remaining rules stay verified. |
 | `test_reconciler.py` | 26 | ≥2 tests per rule R1–R6. Includes skimming below the per-apartment threshold, the rounding remainder that must **not** fire, a penalty charged with no arrears, and an AST test that structurally verifies `reconciler.py` imports none of `google`, `genai`, `httpx`, `requests`, `urllib`, `socket`, `aiohttp`. |
+| `test_letter_rendering.py` | 21 | The letter PDF verified through `pdftotext` rather than by eye, because the visual check is what missed the original defect. Font resolution is never Helvetica, every Romanian glyph survives the round trip, the section heading is not glued to the list numbering, and rendering alters no wording. |
 | `test_contestation_window.py` | 19 | R7 across every state of the window: open, last day, expired, missing posting date, missing reference date. Plus letter-mode selection and the prohibition on invoking alin. (3) after expiry. |
+| `test_dashboard.py` | 17 | The inspection page is read only, enforced structurally by asserting the app exposes only GET and HEAD. Rejected audits explain the decision, a clean document says so rather than showing nothing, record content is escaped, and a missing audit is 404 rather than a cheerful 200. |
 | `test_job_filter.py` | 16 | The anti-loop filter. `output/` never reprocessed, non-PDFs ignored, but `liste/output/x.pdf` still processed (prefix, not substring). Every audit gets its own directory. |
 | `test_drafter.py` | 14 | No invented amount, including one that was *correctly recomputed*. No invented, misattributed, omitted or duplicated finding. Romanian money-format parsing. |
+| `test_triage.py` | 12 | The entry gate accepts, rejects, and above all fails open: a model error, an unreadable PDF, an invalid response and a disabled gate all let the document through. Disabled triage never calls the model at all. |
 | `test_integrity.py` | 12 | R0 on rows and columns, tolerances, cell localization by intersection, the ambiguity that must **not** be localized, the conservative resolution without a re-read, fail-fast on incomplete config. |
 | `test_state.py` | 11 | Idempotency: the same file reprocessed neither duplicates the document nor resets its state. Monthly history via `association_ref`. Failures persisted with their reason. Artifacts not duplicated on retry. |
 | `test_extractor_join.py` | 9 | Deterministic alignment of column headers to category labels. Ambiguous or unknown matches reported, never forced. Values never altered. |
+| `test_pipeline_gate.py` | 8 | The gate inside the full pipeline, offline. A rejected document never reaches the extractor, a failing stage stops the ones after it, and an unavailable triage runs the whole thing anyway. | Deterministic alignment of column headers to category labels. Ambiguous or unknown matches reported, never forced. Values never altered. |
 
 The acceptance suite caught two real bugs during development, both false
 positives on the clean document: aggregate drift fabricated by rounding each
@@ -654,18 +699,29 @@ behaviour, not a defect, but it is not the same as coverage.
 consilium/
   schema.py       the Pydantic contract; zero SDK dependencies
   config.py       thresholds from config.yaml, fail-fast on missing keys
+  triage.py       the entry gate; fails open by construction
   extractor.py    PDF → PaymentList; transcribes, does not compute
   integrity.py    R0; deterministic, no network
   reconciler.py   R1–R7 + coverage report; deterministic, no network
   drafter.py      the letter + the validator + the artifacts
+  delivery.py     optional email; cannot fail an audit
   state.py        Firestore, `audits` collection; in-memory double for tests
-  pipeline.py     ADK SequentialAgent with the four sub-agents
+  pipeline.py     ADK SequentialAgent with the six sub-agents
+  dashboard.py    the read-only inspection page
 job/
   main.py         the Cloud Run Job entry point
   launcher.py     the service that receives the CloudEvent
-  entry.py        dispatcher between the two roles
-hoa_agent/        ADK inspection UI, read-only
-tools/            synthetic data generator, fidelity checker
+  entry.py        dispatcher between job, launcher and dashboard roles
+hoa_agent/        ADK inspection agent, read-only
+tools/
+  gen_samples.py     synthetic payment lists, three layouts plus a negative
+  check_extraction.py fidelity against the generator's ground truth
+  run_integrity.py    R0 and the targeted re-read over a saved extraction
+  baseline_chat.py    the one-call chatbot benchmark
+  narrate.py          demo narration via Cloud Text-to-Speech
+  record_demo.py      demo capture; real uploads, lossless frames
+  build_demo.py       fits each scene to its narration and assembles
+demo/storyboard.py  narration and visual action, one scene at a time
 scripts/deploy.sh
 ```
 
