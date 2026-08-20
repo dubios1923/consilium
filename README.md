@@ -16,6 +16,45 @@ correct legal basis.
 
 ---
 
+## Reproducible testing
+
+The whole audit is verifiable offline. No Google Cloud project, no credentials,
+no billing: the 274 tests never call a model, and the sample documents are
+regenerated locally from a seed.
+
+```bash
+git clone https://github.com/dubios1923/consilium && cd consilium
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install pytest ruff Pillow numpy
+
+.venv/bin/python tools/gen_samples.py        # writes samples/synthetic/
+.venv/bin/python -m pytest tests/ -q         # 274 passed, ~6 s
+```
+
+`tests/test_acceptance.py` is the one to read if you only read one. It asserts
+that the reconciler finds **every** error planted in `sample_errors.pdf` and
+`sample_penalties.pdf`, checked one by one against `expected_findings.json`, and
+**zero** findings on `sample_clean.pdf`. The scan case is in there too: R0
+catches the cell the extractor misread, the audit produces no false finding from
+it, and the rules that do not depend on that cell still run.
+
+The generator is deterministic. Two consecutive runs on the same machine produce
+identical files, so the ground truth cannot drift out from under the tests.
+
+Requires `poppler-utils` (`pdftoppm`, `pdftotext`) and a font with Romanian
+diacritics (`fonts-liberation` or `fonts-dejavu-core`); the letter tests verify
+the rendered PDF through `pdftotext` and fail rather than fall back to a font
+that would drop the diacritics.
+
+**The parts that do need Vertex AI** are transcription, the triage gate and
+letter drafting. Section 5 covers running those, and `scripts/deploy.sh` brings
+up the full cloud pipeline. Neither is needed to reproduce the audit results
+above, because `samples/extracted/` is committed: the transcriptions the tests
+run against are in the repo.
+
+---
+
 ## 1. The problem
 
 The building administrator posts the *listă de plată* on the notice board. An
@@ -626,7 +665,7 @@ All of them run offline. None calls a model.
 | `test_integrity.py` | 12 | R0 on rows and columns, tolerances, cell localization by intersection, the ambiguity that must **not** be localized, the conservative resolution without a re-read, fail-fast on incomplete config. |
 | `test_state.py` | 11 | Idempotency: the same file reprocessed neither duplicates the document nor resets its state. Monthly history via `association_ref`. Failures persisted with their reason. Artifacts not duplicated on retry. |
 | `test_extractor_join.py` | 9 | Deterministic alignment of column headers to category labels. Ambiguous or unknown matches reported, never forced. Values never altered. |
-| `test_pipeline_gate.py` | 8 | The gate inside the full pipeline, offline. A rejected document never reaches the extractor, a failing stage stops the ones after it, and an unavailable triage runs the whole thing anyway. | Deterministic alignment of column headers to category labels. Ambiguous or unknown matches reported, never forced. Values never altered. |
+| `test_pipeline_gate.py` | 8 | The gate inside the full pipeline, offline. A rejected document never reaches the extractor, a failing stage stops the ones after it, and an unavailable triage runs the whole thing anyway. |
 
 The acceptance suite caught two real bugs during development, both false
 positives on the clean document: aggregate drift fabricated by rounding each
