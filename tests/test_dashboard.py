@@ -94,13 +94,13 @@ def test_health_endpoint(client):
 
 
 def test_empty_state_is_explained(client):
-    body = client.get("/").text
+    body = client.get("/?lang=ro").text
     assert "Niciun audit încă" in body
 
 
 def test_index_lists_the_audit(client, store):
     audit_id = seed_done(store)
-    body = client.get("/").text
+    body = client.get("/?lang=ro").text
     assert audit_id in body
     assert "Zefir 12" in body
     assert "finalizat" in body
@@ -108,10 +108,10 @@ def test_index_lists_the_audit(client, store):
 
 def test_index_refreshes_only_while_something_runs(client, store):
     seed_done(store)
-    assert "http-equiv=\"refresh\"" not in client.get("/").text
+    assert "http-equiv=\"refresh\"" not in client.get("/?lang=ro").text
     running = store.open_audit("gs://intake/liste/altul.pdf")
     store.set_status(running.audit_id, "extracting")
-    assert "http-equiv=\"refresh\"" in client.get("/").text
+    assert "http-equiv=\"refresh\"" in client.get("/?lang=ro").text
 
 
 def test_rejected_audits_are_counted_separately(client, store):
@@ -121,7 +121,7 @@ def test_rejected_audits_are_counted_separately(client, store):
                                        "confidence": "high", "reason": "nu e listă",
                                        "model": "m", "error": None})
     store.set_status(record.audit_id, "rejected")
-    body = client.get("/").text
+    body = client.get("/?lang=ro").text
     assert "respinse la triaj" in body
     assert "respins" in body
 
@@ -133,7 +133,7 @@ def test_rejected_audits_are_counted_separately(client, store):
 
 def test_detail_shows_findings_coverage_and_delivery(client, store):
     audit_id = seed_done(store)
-    body = client.get(f"/audit/{audit_id}").text
+    body = client.get(f"/audit/{audit_id}?lang=ro").text
     assert "R4, apartamentul 17" in body
     assert "73,95 lei" in body, "sumele se afișează în format românesc"
     assert "art. 77 alin. (2)" in body
@@ -151,7 +151,7 @@ def test_detail_of_rejected_audit_explains_the_decision(client, store):
                                        "reason": "nu conține repartizare",
                                        "model": "m", "error": None})
     store.set_status(record.audit_id, "rejected")
-    body = client.get(f"/audit/{record.audit_id}").text
+    body = client.get(f"/audit/{record.audit_id}?lang=ro").text
     assert "Document respins la intrare" in body
     assert "hotărâre AGA" in body
     assert "nu conține repartizare" in body
@@ -163,7 +163,7 @@ def test_clean_document_says_so_instead_of_showing_nothing(client, store):
                                              "expense_lines_unverified": [],
                                              "documents_to_request": []})
     store.set_status(record.audit_id, "done")
-    body = client.get(f"/audit/{record.audit_id}").text
+    body = client.get(f"/audit/{record.audit_id}?lang=ro").text
     assert "lista de plată este consistentă" in body
 
 
@@ -175,7 +175,7 @@ def test_failure_reason_is_shown(client, store):
     record = store.open_audit("gs://intake/liste/x.pdf")
     started = store.start_step(record.audit_id, "extract")
     store.fail_step(record.audit_id, "extract", started, "RuntimeError: cazut")
-    body = client.get(f"/audit/{record.audit_id}").text
+    body = client.get(f"/audit/{record.audit_id}?lang=ro").text
     assert "RuntimeError: cazut" in body
 
 
@@ -190,7 +190,7 @@ def test_record_content_is_escaped(client, store):
         record.audit_id, "<script>alert(1)</script>", "2025-11", "LP-1"
     )
     store.set_status(record.audit_id, "done")
-    body = client.get(f"/audit/{record.audit_id}").text
+    body = client.get(f"/audit/{record.audit_id}?lang=ro").text
     assert "<script>alert(1)</script>" not in body
     assert "&lt;script&gt;" in body
 
@@ -235,7 +235,7 @@ def notice_of(response) -> str:
 
 
 def test_upload_form_is_on_the_page(client):
-    body = client.get("/").text
+    body = client.get("/?lang=ro").text
     assert 'action="/upload"' in body
     assert "Încarcă o listă de plată" in body
 
@@ -311,3 +311,50 @@ def test_names_are_sanitised(raw, ends_with):
 def test_names_are_unique_per_upload():
     first = dashboard.safe_name("x.pdf")
     assert first.split("_", 1)[0].isdigit()
+
+
+# --------------------------------------------------------------------------
+# Limba
+# --------------------------------------------------------------------------
+
+
+def test_english_is_the_default_for_a_foreign_browser(client, store):
+    """Regulamentul cere ca aplicatia sa suporte engleza; judecatorii nu cer romana."""
+    seed_done(store)
+    body = client.get("/").text
+    assert "Consilium: audits" in body
+    assert "Upload a payment list" in body
+    assert 'lang="en"' in body
+
+
+def test_romanian_browser_gets_romanian(client, store):
+    seed_done(store)
+    body = client.get("/", headers={"accept-language": "ro-RO,ro;q=0.9"}).text
+    assert "Consilium: audituri" in body
+    assert 'lang="ro"' in body
+
+
+def test_explicit_choice_beats_the_browser(client, store):
+    seed_done(store)
+    body = client.get("/?lang=en", headers={"accept-language": "ro-RO"}).text
+    assert "Consilium: audits" in body
+
+
+def test_language_toggle_is_offered(client, store):
+    seed_done(store)
+    assert 'href="/?lang=ro"' in client.get("/").text
+    assert 'href="/?lang=en"' in client.get("/?lang=ro").text
+
+
+def test_english_page_explains_why_the_content_stays_romanian(client, store):
+    seed_done(store)
+    body = client.get("/").text
+    assert "stay in Romanian" in body
+
+
+def test_english_detail_page(client, store):
+    audit_id = seed_done(store)
+    body = client.get(f"/audit/{audit_id}?lang=en").text
+    assert "Coverage" in body
+    assert "Stages" in body
+    assert "Delivery" in body

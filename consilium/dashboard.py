@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from consilium.state import AuditRecord, FirestoreAuditStore
@@ -66,6 +66,144 @@ STEP_LABELS = {
 
 SEVERITY_LABELS = {"high": "ridicată", "medium": "medie", "low": "scăzută",
                    "info": "informativă"}
+
+
+
+# --------------------------------------------------------------------------
+# Limba interfetei
+#
+# Regulamentul cere ca aplicatia sa suporte engleza. Continutul auditului ramane
+# romanesc si trebuie sa ramana: constatarile citeaza un document romanesc si o
+# lege romaneasca, iar scrisoarea generata este un act juridic. Se traduce deci
+# interfata, nu documentul. Limba se ia din browser, cu comutare manuala.
+# --------------------------------------------------------------------------
+
+T: dict[str, dict[str, str]] = {
+    "title": {"ro": "Consilium: audituri", "en": "Consilium: audits"},
+    "subtitle": {
+        "ro": "Liste de plată ale asociațiilor de proprietari. Pagină de inspecție, read-only.",
+        "en": "Payment lists issued by Romanian homeowners' associations. Read-only inspection page.",
+    },
+    "refreshing": {
+        "ro": " Se reîmprospătează automat.",
+        "en": " Refreshing automatically.",
+    },
+    "audits": {"ro": "audituri", "en": "audits"},
+    "findings": {"ro": "constatări", "en": "findings"},
+    "involved": {"ro": "sume implicate", "en": "amounts involved"},
+    "rejected_count": {"ro": "respinse la triaj", "en": "rejected at triage"},
+    "cases": {"ro": "Dosare", "en": "Cases"},
+    "col_case": {"ro": "Dosar", "en": "Case"},
+    "col_org": {"ro": "Asociație / fișier", "en": "Association / file"},
+    "col_period": {"ro": "Perioadă", "en": "Period"},
+    "col_status": {"ro": "Stare", "en": "Status"},
+    "col_findings": {"ro": "Constatări", "en": "Findings"},
+    "col_created": {"ro": "Creat", "en": "Created"},
+    "unknown_org": {"ro": "necunoscută", "en": "unknown"},
+    "empty": {
+        "ro": "Niciun audit încă. Încarcă o listă de plată mai sus.",
+        "en": "No audits yet. Upload a payment list above.",
+    },
+    "upload_heading": {
+        "ro": "Încarcă o listă de plată", "en": "Upload a payment list",
+    },
+    "upload_button": {"ro": "Pornește auditul", "en": "Start the audit"},
+    "upload_hint": {
+        "ro": "Doar PDF, cel mult 12 MB. Documentul ajunge în bucket și "
+              "pipeline-ul pornește singur. Un document care nu e listă de plată "
+              "e respins la triaj în câteva secunde.",
+        "en": "PDF only, 12 MB max. The file lands in the intake bucket and the "
+              "pipeline starts on its own. A document that is not a payment list "
+              "is rejected at triage within seconds.",
+    },
+    "output_note": {
+        "ro": "",
+        "en": "Findings and the generated letter stay in Romanian: they quote a "
+              "Romanian document and Romanian statute, and the letter is a legal "
+              "filing.",
+    },
+    "back": {"ro": "← toate auditurile", "en": "← all audits"},
+    "triage": {"ro": "Triaj", "en": "Triage"},
+    "coverage": {"ro": "Acoperire", "en": "Coverage"},
+    "documents": {"ro": "Documente solicitate", "en": "Documents requested"},
+    "stages": {"ro": "Etape", "en": "Stages"},
+    "delivery": {"ro": "Livrare", "en": "Delivery"},
+    "artifacts": {"ro": "Artefacte", "en": "Artifacts"},
+    "letter_link": {"ro": "Scrisoarea (PDF)", "en": "The letter (PDF)"},
+    "source": {"ro": "Sursă", "en": "Source"},
+    "error": {"ro": "Eroare", "en": "Error"},
+    "no_findings": {
+        "ro": "Nicio constatare: lista de plată este consistentă.",
+        "en": "No findings: the payment list is internally consistent.",
+    },
+    "rule": {"ro": "Regulă", "en": "Rule"},
+    "checked": {"ro": "Verificat", "en": "Checked"},
+    "reason": {"ro": "Motiv", "en": "Reason"},
+    "severity": {"ro": "severitate", "en": "severity"},
+    "basis": {"ro": "Temei", "en": "Legal basis"},
+    "no_amount": {"ro": "fără sumă", "en": "no amount"},
+    "apartment": {"ro": "apartamentul", "en": "apartment"},
+    "period_of": {"ro": "perioada", "en": "period"},
+    "no_document": {
+        "ro": "document neidentificat", "en": "document not identified",
+    },
+    "model": {"ro": "model", "en": "model"},
+    "triage_rejected": {
+        "ro": "Document respins la intrare",
+        "en": "Document rejected at the gate",
+    },
+    "triage_unavailable": {
+        "ro": "Triaj indisponibil, document trecut mai departe",
+        "en": "Triage unavailable, document passed through",
+    },
+    "triage_accepted": {"ro": "Acceptat la triaj", "en": "Accepted at triage"},
+    "identified_as": {"ro": "Tip identificat", "en": "Identified as"},
+    "confidence": {"ro": "încredere", "en": "confidence"},
+    "not_started": {
+        "ro": "Pipeline-ul de extragere nu a fost pornit.",
+        "en": "The extraction pipeline was never started.",
+    },
+    "delivered_to": {"ro": "Trimis către", "en": "Sent to"},
+    "delivery_off": {"ro": "Livrare dezactivată", "en": "Delivery disabled"},
+    "delivery_failed": {"ro": "Eșuat", "en": "Failed"},
+    "message": {"ro": "Mesaj", "en": "Message"},
+    "switch": {"ro": "English", "en": "Română"},
+}
+
+STATUS_LABELS_EN = {
+    "queued": "queued", "triaging": "triage", "extracting": "extracting",
+    "verifying": "R0 check", "reconciling": "reconciling", "drafting": "drafting",
+    "delivering": "delivering", "done": "done", "rejected": "rejected",
+    "failed": "failed",
+}
+
+STEP_LABELS_EN = {
+    "triage": "Triage", "extract": "Extraction", "verify": "R0 check",
+    "reconcile": "Reconciliation", "draft": "Drafting", "deliver": "Delivery",
+}
+
+# Starile de acoperire vin din reconciler ca text romanesc. Sunt stari de
+# interfata, nu continut al documentului, deci se traduc.
+COVERAGE_STATUS_EN = {
+    "verificat": "verified", "parțial": "partial", "neverificabil": "unverifiable",
+}
+
+SEVERITY_LABELS_EN = {
+    "high": "high", "medium": "medium", "low": "low", "info": "informational",
+}
+
+
+def pick_language(requested: str | None, header: str | None) -> str:
+    """Limba paginii: alegerea explicita, altfel ce cere browserul, altfel engleza."""
+    if requested in ("ro", "en"):
+        return requested
+    if header and header.strip().lower().startswith("ro"):
+        return "ro"
+    return "en"
+
+
+def t(key: str, lang: str) -> str:
+    return T[key][lang]
 
 
 def store() -> FirestoreAuditStore:
@@ -159,6 +297,9 @@ code { background: var(--band); padding: 1px 5px; border-radius: 4px; font-size:
                font-weight: 600; cursor: pointer; }
 .drop button:disabled { background: var(--band); color: var(--muted); cursor: default; }
 .hint { color: var(--muted); font-size: 12.5px; margin-top: 9px; max-width: 62ch; }
+.lang { float: right; font-size: 12.5px; color: var(--muted); text-decoration: none;
+        border: 1px solid var(--line); border-radius: 6px; padding: 4px 11px; }
+.lang:hover { color: var(--ink); }
 ul.docs { margin: 0; padding-left: 20px; font-size: 13.5px; }
 ul.docs li { margin-bottom: 6px; }
 @media (prefers-color-scheme: dark) {
@@ -172,21 +313,29 @@ ul.docs li { margin-bottom: 6px; }
 """
 
 
-def page(title: str, body: str, refresh: bool = False, status: int = 200) -> HTMLResponse:
+def page(
+    title: str, body: str, refresh: bool = False, status: int = 200,
+    lang: str = "ro", switch_to: str = "",
+) -> HTMLResponse:
     meta = '<meta http-equiv="refresh" content="5">' if refresh else ""
+    toggle = (
+        f'<a class="lang" href="{switch_to}">{e(t("switch", lang))}</a>'
+        if switch_to
+        else ""
+    )
     return HTMLResponse(
         status_code=status,
-        content=
-        f"""<!doctype html><html lang="ro"><head><meta charset="utf-8">
+        content=f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(title)}</title>{meta}<style>{CSS}</style></head>
-<body><div class="wrap">{body}</div></body></html>""",
+<body><div class="wrap">{toggle}{body}</div></body></html>""",
     )
 
 
-def status_pill(status: str) -> str:
+def status_pill(status: str, lang: str = "ro") -> str:
     css = "run" if status in RUNNING else status
-    return f'<span class="pill {css}">{e(STATUS_LABELS.get(status, status))}</span>'
+    labels = STATUS_LABELS if lang == "ro" else STATUS_LABELS_EN
+    return f'<span class="pill {css}">{e(labels.get(status, status))}</span>'
 
 
 @app.get("/healthz")
@@ -195,7 +344,9 @@ def healthz() -> dict[str, str]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def index(notice: str = "") -> HTMLResponse:
+def index(request: Request, notice: str = "", lang: str = "") -> HTMLResponse:
+    lang = pick_language(lang or None, request.headers.get("accept-language"))
+    other = "ro" if lang == "en" else "en"
     try:
         records = store().list_recent(limit=50)
     except Exception as error:  # noqa: BLE001 - pagina nu are voie sa cada
@@ -221,87 +372,93 @@ def index(notice: str = "") -> HTMLResponse:
         rows.append(
             f"""<tr>
 <td><a href="/audit/{e(record.audit_id)}"><code>{e(record.audit_id)}</code></a></td>
-<td>{e(record.association_ref) or "<span class=\"sev\">necunoscută</span>"}<div class="sev">{e(record.source_uri.rsplit("/", 1)[-1])}</div></td>
+<td>{e(record.association_ref) or f'<span class="sev">{e(t("unknown_org", lang))}</span>'}<div class="sev">{e(record.source_uri.rsplit("/", 1)[-1])}</div></td>
 <td>{e(record.period or "")}</td>
-<td>{status_pill(record.status)}</td>
+<td>{status_pill(record.status, lang)}</td>
 <td class="num">{count if record.status == "done" else ""}</td>
 <td class="num">{when(record.created_at)}</td></tr>"""
         )
 
     table = (
-        "<table><tr><th>Dosar</th><th>Asociație / fișier</th><th>Perioadă</th>"
-        "<th>Stare</th><th class='num'>Constatări</th><th class='num'>Creat</th></tr>"
+        f"<table><tr><th>{e(t('col_case', lang))}</th>"
+        f"<th>{e(t('col_org', lang))}</th><th>{e(t('col_period', lang))}</th>"
+        f"<th>{e(t('col_status', lang))}</th>"
+        f"<th class='num'>{e(t('col_findings', lang))}</th>"
+        f"<th class='num'>{e(t('col_created', lang))}</th></tr>"
         + "".join(rows)
         + "</table>"
-    ) if rows else '<div class="empty">Niciun audit încă. Încarcă un PDF în bucket-ul de intrare.</div>'
+    ) if rows else f'<div class="empty">{e(t("empty", lang))}</div>'
 
     running = any(r.status in RUNNING for r in records)
     body = f"""<header class="top">
-<h1>Consilium: audituri</h1>
-<div class="sub">Liste de plată ale asociațiilor de proprietari. Pagină de inspecție, read-only.
-{' Se reîmprospătează automat.' if running else ''}</div>
+<h1>{e(t("title", lang))}</h1>
+<div class="sub">{e(t("subtitle", lang))}{e(t("refreshing", lang)) if running else ''}</div>
 </header>
 <div class="stats">
-  <div class="stat"><div class="n">{len(records)}</div><div class="l">audituri</div></div>
-  <div class="stat"><div class="n">{findings}</div><div class="l">constatări</div></div>
-  <div class="stat"><div class="n">{money(involved)}</div><div class="l">sume implicate</div></div>
-  <div class="stat"><div class="n">{rejected}</div><div class="l">respinse la triaj</div></div>
+  <div class="stat"><div class="n">{len(records)}</div><div class="l">{e(t("audits", lang))}</div></div>
+  <div class="stat"><div class="n">{findings}</div><div class="l">{e(t("findings", lang))}</div></div>
+  <div class="stat"><div class="n">{money(involved)}</div><div class="l">{e(t("involved", lang))}</div></div>
+  <div class="stat"><div class="n">{rejected}</div><div class="l">{e(t("rejected_count", lang))}</div></div>
 </div>
-<h2>Încarcă o listă de plată</h2>
+<h2>{e(t("upload_heading", lang))}</h2>
 <form class="drop" method="post" action="/upload" enctype="multipart/form-data">
   <input type="file" name="document" accept="application/pdf,.pdf" required
          onchange="this.form.querySelector('button').disabled=false;
                    this.form.querySelector('.chosen').textContent=this.files[0].name">
   <div class="chosen"></div>
-  <button type="submit" disabled>Pornește auditul</button>
-  <div class="hint">Doar PDF, cel mult 12 MB. Documentul ajunge în bucket și
-  pipeline-ul pornește singur. Un document care nu e listă de plată e respins la
-  triaj în câteva secunde.</div>
+  <button type="submit" disabled>{e(t("upload_button", lang))}</button>
+  <div class="hint">{e(t("upload_hint", lang))}</div>
 </form>
+{f'<div class="hint">{e(t("output_note", lang))}</div>' if t("output_note", lang) else ''}
 {f'<div class="hint" style="margin-top:10px">{e(notice)}</div>' if notice else ''}
-<h2>Dosare</h2>{table}"""
-    return page("Consilium: audituri", body, refresh=running)
+<h2>{e(t("cases", lang))}</h2>{table}"""
+    return page(
+        t("title", lang), body, refresh=running, lang=lang,
+        switch_to=f"/?lang={other}",
+    )
 
 
-def render_triage(record: AuditRecord) -> str:
+def render_triage(record: AuditRecord, lang: str) -> str:
     triage = record.triage
     if not triage:
         return ""
     status = triage.get("status")
     if status == "rejected":
-        head = "Document respins la intrare"
+        head = t("triage_rejected", lang)
         detail = (
-            f"Tip identificat: <b>{e(triage.get('document_type'))}</b> "
-            f"(încredere {e(triage.get('confidence'))}). "
-            f"Pipeline-ul de extragere nu a fost pornit."
+            f"{e(t('identified_as', lang))}: <b>{e(triage.get('document_type'))}</b> "
+            f"({e(t('confidence', lang))} {e(triage.get('confidence'))}). "
+            f"{e(t('not_started', lang))}"
         )
     elif status == "unavailable":
-        head = "Triaj indisponibil, document trecut mai departe"
+        head = t("triage_unavailable", lang)
         detail = e(triage.get("error") or triage.get("reason"))
     else:
-        head = "Acceptat la triaj"
+        head = t("triage_accepted", lang)
         detail = (
-            f"Tip identificat: <b>{e(triage.get('document_type'))}</b> "
-            f"(încredere {e(triage.get('confidence'))})."
+            f"{e(t('identified_as', lang))}: <b>{e(triage.get('document_type'))}</b> "
+            f"({e(t('confidence', lang))} {e(triage.get('confidence'))})."
         )
-    return f"""<h2>Triaj</h2><div class="card">
+    return f"""<h2>{e(t("triage", lang))}</h2><div class="card">
 <div class="rule">{e(head)}</div>
 <div class="msg">{detail}</div>
-<div class="legal">{e(triage.get('reason'))} · model <code>{e(triage.get('model'))}</code></div>
+<div class="legal">{e(triage.get('reason'))} · {e(t("model", lang))} <code>{e(triage.get('model'))}</code></div>
 </div>"""
 
 
-def render_findings(record: AuditRecord) -> str:
+def render_findings(record: AuditRecord, lang: str) -> str:
     if not record.findings:
         if record.status == "done":
-            return ('<h2>Constatări</h2><div class="empty">'
-                    "Nicio constatare: lista de plată este consistentă.</div>")
+            return (
+                f'<h2>{e(t("findings", lang)).capitalize()}</h2><div class="empty">'
+                f'{e(t("no_findings", lang))}</div>'
+            )
         return ""
     cards = []
     for finding in record.findings:
         label = e(finding.get("rule_id"))
         if finding.get("apartment_no"):
-            label += f", apartamentul {e(finding['apartment_no'])}"
+            label += f", {e(t('apartment', lang))} {e(finding['apartment_no'])}"
         if finding.get("category"):
             label += f", „{e(finding['category'])}”"
         amount = finding.get("amount_involved")
@@ -309,26 +466,33 @@ def render_findings(record: AuditRecord) -> str:
         amount_html = (
             f'<span class="amount {"warn" if severity != "info" else ""}">{money(amount)}</span>'
             if isinstance(amount, (int, float))
-            else '<span class="sev">fără sumă</span>'
+            else f'<span class="sev">{e(t("no_amount", lang))}</span>'
         )
         legal = finding.get("legal_reference")
         cards.append(
             f"""<div class="card">
 <div class="head"><span class="rule">{label}</span>{amount_html}</div>
 <div class="msg">{e(finding.get('message'))}</div>
-<div class="sev">severitate {e(SEVERITY_LABELS.get(severity, severity))}</div>
-{f'<div class="legal">Temei: {e(legal)}</div>' if legal else ''}
+<div class="sev">{e(t("severity", lang))} {e((SEVERITY_LABELS if lang == "ro" else SEVERITY_LABELS_EN).get(severity, severity))}</div>
+{f'<div class="legal">{e(t("basis", lang))}: {e(legal)}</div>' if legal else ''}
 </div>"""
         )
-    return "<h2>Constatări</h2>" + "".join(cards)
+    return f'<h2>{e(t("findings", lang)).capitalize()}</h2>' + "".join(cards)
 
 
-def render_coverage(record: AuditRecord) -> str:
+def coverage_status(status: str | None, lang: str) -> str:
+    if lang == "ro" or not status:
+        return status or ""
+    return COVERAGE_STATUS_EN.get(status, status)
+
+
+def render_coverage(record: AuditRecord, lang: str) -> str:
     coverage = record.coverage_report
     if not coverage:
         return ""
     rules = "".join(
-        f"<tr><td><b>{e(rule.get('rule_id'))}</b></td><td>{e(rule.get('status'))}</td>"
+        f"<tr><td><b>{e(rule.get('rule_id'))}</b></td>"
+        f"<td>{e(coverage_status(rule.get('status'), lang))}</td>"
         f"<td class='num'>{e(rule.get('checked'))}/{e(rule.get('total'))}</td>"
         f"<td>{e(rule.get('reason') or '')}</td></tr>"
         for rule in coverage.get("rules", [])
@@ -341,15 +505,15 @@ def render_coverage(record: AuditRecord) -> str:
         f"<li>{e(document)}</li>"
         for document in coverage.get("documents_to_request", [])
     )
-    return f"""<h2>Acoperire</h2>
+    return f"""<h2>{e(t("coverage", lang))}</h2>
 <div class="card"><div class="rule">{e(coverage.get('summary'))}</div>
 {f'<ul class="docs">{unverified}</ul>' if unverified else ''}</div>
-<table><tr><th>Regulă</th><th>Stare</th><th class="num">Verificat</th><th>Motiv</th></tr>
+<table><tr><th>{e(t("rule", lang))}</th><th>{e(t("col_status", lang))}</th><th class="num">{e(t("checked", lang))}</th><th>{e(t("reason", lang))}</th></tr>
 {rules}</table>
-{f'<h2>Documente solicitate</h2><div class="card"><ul class="docs">{docs}</ul></div>' if docs else ''}"""
+{f'<h2>{e(t("documents", lang))}</h2><div class="card"><ul class="docs">{docs}</ul></div>' if docs else ''}"""
 
 
-def render_timeline(record: AuditRecord) -> str:
+def render_timeline(record: AuditRecord, lang: str) -> str:
     steps = []
     for entry in record.step_log:
         if entry.get("status") == "started":
@@ -357,31 +521,33 @@ def render_timeline(record: AuditRecord) -> str:
         css = "failed" if entry.get("status") == "failed" else "ok"
         duration = entry.get("duration_s")
         steps.append(
-            f"""<div class="step {css}"><div>{e(STEP_LABELS.get(entry['step'], entry['step']))}</div>
+            f"""<div class="step {css}"><div>{e((STEP_LABELS if lang == "ro" else STEP_LABELS_EN).get(entry['step'], entry['step']))}</div>
 <div class="d">{f'{duration:.2f} s' if isinstance(duration, (int, float)) else ''}</div></div>"""
         )
     if not steps:
         return ""
-    return f'<h2>Etape</h2><div class="timeline">{"".join(steps)}</div>'
+    return f'<h2>{e(t("stages", lang))}</h2><div class="timeline">{"".join(steps)}</div>'
 
 
-def render_delivery(record: AuditRecord) -> str:
+def render_delivery(record: AuditRecord, lang: str) -> str:
     delivery = record.delivery
     if not delivery:
         return ""
     status = delivery.get("status")
     text = {
-        "delivered": f"Trimis către {e(delivery.get('recipient'))}",
-        "skipped": "Livrare dezactivată",
-        "failed": f"Eșuat: {e(delivery.get('error'))}",
+        "delivered": f"{e(t('delivered_to', lang))} {e(delivery.get('recipient'))}",
+        "skipped": t("delivery_off", lang),
+        "failed": f"{e(t('delivery_failed', lang))}: {e(delivery.get('error'))}",
     }.get(status, e(status))
     identifier = delivery.get("message_id")
-    return f"""<h2>Livrare</h2><div class="card"><div class="msg">{text}</div>
-{f'<div class="legal">Mesaj <code>{e(identifier)}</code></div>' if identifier else ''}</div>"""
+    return f"""<h2>{e(t("delivery", lang))}</h2><div class="card"><div class="msg">{text}</div>
+{f'<div class="legal">{e(t("message", lang))} <code>{e(identifier)}</code></div>' if identifier else ''}</div>"""
 
 
 @app.get("/audit/{audit_id}", response_class=HTMLResponse)
-def detail(audit_id: str) -> HTMLResponse:
+def detail(request: Request, audit_id: str, lang: str = "") -> HTMLResponse:
+    lang = pick_language(lang or None, request.headers.get("accept-language"))
+    other = "ro" if lang == "en" else "en"
     try:
         record = store().get(audit_id)
     except Exception as error:  # noqa: BLE001
@@ -398,7 +564,9 @@ def detail(audit_id: str) -> HTMLResponse:
     letter = next((u for u in record.artifact_uris if u.endswith(".pdf")), None)
     links = []
     if letter:
-        links.append(f'<a href="/audit/{e(audit_id)}/letter">Scrisoarea (PDF)</a>')
+        links.append(
+            f'<a href="/audit/{e(audit_id)}/letter">{e(t("letter_link", lang))}</a>'
+        )
     links += [f"<code>{e(uri)}</code>" for uri in record.artifact_uris]
     artifacts = (
         '<h2>Artefacte</h2><div class="card"><ul class="docs">'
@@ -407,23 +575,25 @@ def detail(audit_id: str) -> HTMLResponse:
     ) if links else ""
 
     body = f"""<header class="top">
-<div class="back"><a href="/">← toate auditurile</a></div>
+<div class="back"><a href="/?lang={lang}">{e(t("back", lang))}</a></div>
 <h1>{e(record.association_ref or record.source_uri.rsplit("/", 1)[-1])}</h1>
-<div class="sub">{status_pill(record.status)} &nbsp; <code>{e(record.audit_id)}</code>
-&nbsp;·&nbsp; {e(record.document_id or "document neidentificat")}
-&nbsp;·&nbsp; perioada {e(record.period or "necunoscută")}
+<div class="sub">{status_pill(record.status, lang)} &nbsp; <code>{e(record.audit_id)}</code>
+&nbsp;·&nbsp; {e(record.document_id or t("no_document", lang))}
+&nbsp;·&nbsp; {e(t("period_of", lang))} {e(record.period or t("unknown_org", lang))}
 &nbsp;·&nbsp; {when(record.created_at)}</div>
-{f'<div class="sub" style="color:var(--warn);margin-top:6px">Eroare: {e(record.error)}</div>' if record.error else ''}
+{f'<div class="sub" style="color:var(--warn);margin-top:6px">{e(t("error", lang))}: {e(record.error)}</div>' if record.error else ''}
 </header>
-{render_triage(record)}
-{render_findings(record)}
-{render_coverage(record)}
-{render_timeline(record)}
-{render_delivery(record)}
+{render_triage(record, lang)}
+{render_findings(record, lang)}
+{render_coverage(record, lang)}
+{render_timeline(record, lang)}
+{render_delivery(record, lang)}
 {artifacts}
-<div class="note" style="margin-top:26px">Sursă: <code>{e(record.source_uri)}</code></div>"""
+<div class="note" style="margin-top:26px">{e(t("source", lang))}: <code>{e(record.source_uri)}</code></div>"""
     return page(
-        f"Consilium: {record.audit_id}", body, refresh=record.status in RUNNING
+        f"Consilium: {record.audit_id}", body,
+        refresh=record.status in RUNNING, lang=lang,
+        switch_to=f"/audit/{audit_id}?lang={other}",
     )
 
 
