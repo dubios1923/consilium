@@ -1,14 +1,14 @@
 {
   "voice": "en-US-Studio-O",
   "rate": 1.0,
-  "total_seconds": 241.35,
+  "total_seconds": 243.45,
   "scenes": [
     {
       "index": 0,
       "key": "problem",
       "action": "card",
       "audio": "demo/audio_o/00_problem.wav",
-      "seconds": 18.775,
+      "seconds": 16.575,
       "min_seconds": 0.0
     },
     {
@@ -24,8 +24,8 @@
       "key": "gate_upload",
       "action": "upload",
       "audio": "demo/audio_o/02_gate_upload.wav",
-      "seconds": 6.425,
-      "min_seconds": 4.0
+      "seconds": 8.725,
+      "min_seconds": 6.0
     },
     {
       "index": 3,
@@ -40,8 +40,8 @@
       "key": "real_upload",
       "action": "upload",
       "audio": "demo/audio_o/04_real_upload.wav",
-      "seconds": 2.425,
-      "min_seconds": 3.0
+      "seconds": 2.925,
+      "min_seconds": 5.0
     },
     {
       "index": 5,
@@ -80,7 +80,7 @@
       "key": "finding_r0",
       "action": "card",
       "audio": "demo/audio_o/09_finding_r0.wav",
-      "seconds": 30.975,
+      "seconds": 27.2,
       "min_seconds": 14.0
     },
     {
@@ -93,18 +93,26 @@
     },
     {
       "index": 11,
-      "key": "architecture",
-      "action": "card",
-      "audio": "demo/audio_o/11_architecture.wav",
-      "seconds": 22.325,
-      "min_seconds": 12.0
+      "key": "proof",
+      "action": "terminal",
+      "audio": "demo/audio_o/11_proof.wav",
+      "seconds": 11.8,
+      "min_seconds": 14.0
     },
     {
       "index": 12,
+      "key": "architecture",
+      "action": "card",
+      "audio": "demo/audio_o/12_architecture.wav",
+      "seconds": 18.525,
+      "min_seconds": 12.0
+    },
+    {
+      "index": 13,
       "key": "close",
       "action": "card",
-      "audio": "demo/audio_o/12_close.wav",
-      "seconds": 21.8,
+      "audio": "demo/audio_o/13_close.wav",
+      "seconds": 19.075,
       "min_seconds": 12.0
     }
   ]

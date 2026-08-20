@@ -11,7 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-Action = Literal["card", "dashboard", "detail", "letter", "upload", "wait_state"]
+Action = Literal[
+    "card", "detail", "letter", "upload", "wait_state", "terminal"
+]
 
 
 @dataclass
@@ -32,6 +34,8 @@ class Scene:
     audit_key: str = ""
     # derulare lenta in pagina, ca sa se vada continutul
     scroll_to: int = 0
+    # pentru `terminal`: comenzi rulate chiar atunci, cu output-ul lor real
+    commands: list[list[str]] = field(default_factory=list)
 
 
 STORYBOARD: list[Scene] = [
@@ -47,10 +51,10 @@ STORYBOARD: list[Scene] = [
         ],
         narration=(
             "Every month, a Romanian homeowners' association posts a payment list "
-            "on the notice board. Twenty-eight apartments, fifteen columns, eight "
-            "different allocation keys. Owners have ten days to contest how their "
-            "share was calculated. Almost nobody does, because checking it means "
-            "knowing both the statute and the arithmetic."
+            "on the notice board. Twenty-eight apartments, eight different "
+            "allocation keys. Owners have ten days to contest their share. Almost "
+            "nobody does: checking it means knowing both the statute and the "
+            "arithmetic."
         ),
     ),
     Scene(
@@ -75,10 +79,11 @@ STORYBOARD: list[Scene] = [
         action="upload",
         sample="sample_not_a_payment_list.pdf",
         narration=(
-            "First, something that is not a payment list. An association's "
-            "general assembly resolution."
+            "Here is the whole interface. One file, copied into a bucket. "
+            "First, something that is not a payment list: a general assembly "
+            "resolution."
         ),
-        min_seconds=4.0,
+        min_seconds=6.0,
     ),
     Scene(
         key="gate_result",
@@ -96,8 +101,8 @@ STORYBOARD: list[Scene] = [
         key="real_upload",
         action="upload",
         sample="sample_errors.pdf",
-        narration="Now a real payment list.",
-        min_seconds=3.0,
+        narration="Now a real payment list, the same way.",
+        min_seconds=5.0,
     ),
     Scene(
         key="pipeline",
@@ -167,14 +172,13 @@ STORYBOARD: list[Scene] = [
             "Re-read disagreed. Cell marked unauditable. Zero false findings.",
         ],
         narration=(
-            "Two things we learned building it. First: asking a model how "
-            "confident it is does not detect its own reading errors. On a degraded "
-            "scan, fidelity was ninety nine point six percent, and both errors "
-            "were reported with full confidence. The fix is arithmetic redundancy. "
-            "A financial document contains its own check: rows sum to totals, "
-            "columns sum to declared amounts. When apartment seven stopped adding "
-            "up, a targeted re-read disagreed with the first reading, and the cell "
-            "was marked unauditable instead of becoming an accusation."
+            "Two things we learned. First: asking a model how confident it is "
+            "does not detect its own reading errors. On a degraded scan, fidelity "
+            "was ninety nine point six percent, and both errors were reported with "
+            "full confidence. The fix is arithmetic redundancy. A financial "
+            "document contains its own check: rows sum to totals, columns sum to "
+            "declared amounts. When apartment seven stopped adding up, the cell was "
+            "marked unauditable instead of becoming an accusation."
         ),
         min_seconds=14.0,
     ),
@@ -202,6 +206,23 @@ STORYBOARD: list[Scene] = [
         min_seconds=16.0,
     ),
     Scene(
+        key="proof",
+        action="terminal",
+        commands=[
+            ["gcloud", "run", "jobs", "executions", "list",
+             "--job=consilium-audit", "--region=europe-west1",
+             "--limit=4", "--format=table(metadata.name,status.succeededCount)"],
+            ["gcloud", "storage", "ls", "gs://consilium-intake-ab7x21/output/"],
+        ],
+        narration=(
+            "None of that was staged. Each upload triggered a Cloud Run job "
+            "execution through Eventarc, and each finished audit wrote its letter, "
+            "its findings and its report into the bucket, under its own case "
+            "folder."
+        ),
+        min_seconds=14.0,
+    ),
+    Scene(
         key="architecture",
         action="card",
         card_title="Architecture",
@@ -215,10 +236,9 @@ STORYBOARD: list[Scene] = [
         narration=(
             "The architecture puts the boundary in one place. Triage and "
             "extraction touch a model. The integrity check and the audit rules do "
-            "not, and a test enforces that structurally by parsing the source and "
-            "asserting no model SDK is imported. Two hundred and fifty four tests, "
-            "state in Firestore, secrets in Secret Manager, and the whole thing "
-            "runs from a file landing in a bucket."
+            "not, and a test enforces that by parsing the source and asserting no "
+            "model SDK is imported. Two hundred and fifty four tests, state in "
+            "Firestore, secrets in Secret Manager."
         ),
         min_seconds=12.0,
     ),
@@ -235,11 +255,10 @@ STORYBOARD: list[Scene] = [
         ],
         narration=(
             "Homeowners' associations are the first vertical because it is the "
-            "problem I have. The shape is general: a financial document issued by "
-            "a party with an interest in erring in its own favour, sent to someone "
-            "with a deadline to object and no practical way to check. Utility "
-            "bills, medical bills, insurance settlements. The rules change. The "
-            "integrity check does not."
+            "problem I have. The shape is general: a financial document from a "
+            "party with an interest in erring in its own favour, and a deadline to "
+            "object. Utility bills, medical bills, insurance settlements. The rules "
+            "change. The integrity check does not."
         ),
         min_seconds=12.0,
     ),

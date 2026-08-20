@@ -101,6 +101,46 @@ def letter_html(pdf: bytes, pages: int = 2) -> str:
     )
 
 
+TERMINAL_CSS = """
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; background:#0b0d10; padding:44px 56px;
+       font:15.5px/1.65 "Liberation Mono","DejaVu Sans Mono",monospace;
+       color:#c8cdd6; }
+.win { background:#14171c; border:1px solid #262b33; border-radius:10px;
+       overflow:hidden; box-shadow:0 22px 60px rgba(0,0,0,.6); }
+.bar { background:#1b1f26; padding:9px 14px; border-bottom:1px solid #262b33;
+       font-size:12.5px; color:#7d8492; letter-spacing:.04em; }
+.body { padding:20px 22px; white-space:pre-wrap; word-break:break-word; }
+.cmd { color:#e8eaee; }
+.cmd .p { color:#6fb39a; }
+.out { color:#98a0ad; }
+"""
+
+
+def terminal_html(blocks: list[tuple[str, str]]) -> str:
+    """Fereastra de terminal cu comenzile si output-ul lor, exact cum au rulat."""
+    parts = []
+    for command, output in blocks:
+        parts.append(
+            f'<div class="cmd"><span class="p">$</span> {command}</div>'
+            f'<div class="out">{output}</div>'
+        )
+    return (
+        f"<!doctype html><html><head><meta charset='utf-8'>"
+        f"<style>{TERMINAL_CSS}</style></head><body>"
+        f"<div class='win'><div class='bar'>consilium</div>"
+        f"<div class='body'>{''.join(parts)}</div></div></body></html>"
+    )
+
+
+def run_and_capture(command: list[str]) -> tuple[str, str]:
+    """Ruleaza comanda si intoarce (text afisat, output). Nimic pregatit."""
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    output = (result.stdout or result.stderr or "").strip()
+    shown = " ".join(command)
+    return shown, output
+
+
 def upload(sample: str) -> str:
     """Încarcă un sample cu nume unic. Întoarce numele obiectului."""
     name = f"demo_{int(time.time())}_{sample}"
@@ -143,9 +183,19 @@ def record_scene(
             hold(seconds)
 
         elif scene.action == "upload":
-            page.goto(dashboard, wait_until="networkidle")
-            state[scene.sample] = upload(scene.sample)
-            hold(seconds)
+            name = f"demo_{int(time.time())}_{scene.sample}"
+            command = [
+                "gcloud", "storage", "cp",
+                str(SAMPLES / scene.sample), f"{BUCKET}/liste/{name}",
+            ]
+            page.set_content(terminal_html([(" ".join(command), "")]))
+            hold(min(2.5, seconds * 0.35))
+            shown, output = run_and_capture(command)
+            page.set_content(
+                terminal_html([(shown, output or "Copying... done.")])
+            )
+            state[scene.sample] = name
+            hold(max(1.5, seconds - min(2.5, seconds * 0.35)))
 
         elif scene.action == "wait_state":
             deadline = time.time() + WAIT_LIMIT_SECONDS
@@ -167,6 +217,14 @@ def record_scene(
             if scene.scroll_to:
                 page.mouse.wheel(0, scene.scroll_to)
             hold(seconds)
+
+        elif scene.action == "terminal":
+            blocks: list[tuple[str, str]] = []
+            share = seconds / max(1, len(scene.commands))
+            for command in scene.commands:
+                blocks.append(run_and_capture(command))
+                page.set_content(terminal_html(blocks))
+                hold(share)
 
         elif scene.action == "letter":
             url = f"{dashboard}/audit/{state['last_audit']}/letter"
