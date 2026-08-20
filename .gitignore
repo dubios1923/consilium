@@ -6,3 +6,7 @@ __pycache__/
 .adk/
 .claude/
 artifacts/
+demo/audio/
+demo/video/
+demo/build/
+demo/*.mp4
