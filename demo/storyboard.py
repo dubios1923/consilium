@@ -239,13 +239,13 @@ STORYBOARD: list[Scene] = [
             "Triage and Extractor touch a model. Integrity and Reconciler do not.",
             "The audit rules are ordinary Python, verified by an AST test",
             "that no model SDK is imported.",
-            "254 tests. Firestore state. Secrets in Secret Manager.",
+            "274 tests. Firestore state. Secrets in Secret Manager.",
         ],
         narration=(
             "The architecture puts the boundary in one place. Triage and "
             "extraction touch a model. The integrity check and the audit rules do "
             "not, and a test enforces that by parsing the source and asserting no "
-            "model SDK is imported. Two hundred and fifty four tests, state in "
+            "model SDK is imported. Two hundred and seventy four tests, state in "
             "Firestore, secrets in Secret Manager."
         ),
         min_seconds=12.0,
