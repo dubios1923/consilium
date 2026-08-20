@@ -29,6 +29,72 @@ day. The deadline passes, the right lapses, and next month starts over.
 
 ---
 
+## Beyond Romanian HOAs
+
+Consilium is not a tool for homeowners' associations. It is an architecture for
+a class of problem: **a financial document issued by a party with an interest in
+erring in its own favour, sent to a recipient who has a legal window to contest
+it and no practical ability to check it.**
+
+The three properties that define the class are what the architecture is built
+around. The issuer controls the arithmetic. The recipient is not an accountant.
+The right to object expires.
+
+Romania is the first vertical because it is the problem I have. The same shape
+appears elsewhere:
+
+- **Utility bills.** A metered quantity, a tariff, and a total the customer is
+  not equipped to re-derive. Most jurisdictions give a fixed window to dispute a
+  bill before it is treated as accepted, and the meter reading that would settle
+  the question is frequently absent from the invoice.
+- **Medical bills and explanation-of-benefits statements.** Itemised charges
+  against coverage rules the patient has never read, where the appeal window is
+  counted from the date of the statement rather than from the date the patient
+  understood it.
+- **Insurance claim settlements.** A loss adjuster's breakdown of what is
+  covered, depreciated and excluded, issued by the party that pays. Policies
+  typically fix a period for contesting the settlement, after which acceptance
+  is presumed.
+- **Supplier invoices to small businesses.** Volume discounts, indexation
+  clauses and pass-through fees applied by the supplier's own system, where the
+  contractual objection period is short and the recipient has no finance function.
+
+### What changes for a new vertical
+
+- **The Pydantic schema.** Different documents have different line items. What
+  stays is the shape: a set of declared totals, a set of allocated lines, and a
+  per-recipient breakdown.
+- **The rules in `config.yaml`.** R1–R7 encode Romanian HOA arithmetic. A
+  utility bill's rules are different rules over the same kind of structure.
+- **The legal basis.** Article references, contestation windows and escalation
+  paths are configuration, not code — that separation exists precisely because
+  they are the part that does not transfer.
+
+### What does not change
+
+- **R0.** The arithmetic cross-validation is universal, because it does not
+  encode any domain knowledge. It exploits a property every financial document
+  has: it contains its own redundancy. Rows sum to totals, columns sum to
+  declared amounts, and a transcription error breaks that redundancy in a way
+  the issuer's own document proves. R0 needs no rule about heating or coverage
+  tiers — only that the numbers were supposed to add up.
+- **The model/deterministic split.** A model transcribes; ordinary code decides.
+  The reason is the same in any vertical where the output is an accusation
+  somebody will contest.
+- **The claim validator.** Every sentence in the generated letter maps to a
+  computed finding, and every amount comes from one. That constraint is
+  domain-independent; only the findings change.
+- **The coverage report.** What could not be verified, and which document would
+  settle it. Every vertical has its version of "we could not check this without
+  the supplier's invoice", and every vertical has the same failure mode if it
+  stays silent about it.
+
+The verticals differ in their vocabulary. They do not differ in the property
+that makes the problem hard: the recipient is being asked to trust arithmetic
+performed by the party that benefits from it.
+
+---
+
 ## 2. Architecture
 
 ```mermaid
@@ -44,37 +110,66 @@ flowchart TB
 
     subgraph JOB["consilium-audit · Cloud Run Job · SequentialAgent (ADK)"]
         direction TB
+        T["Triage<br/>first page only, small model"]
         E["Extractor<br/>3 Vertex passes"]
         I["Integrity · R0<br/>+ targeted re-read"]
         R["Reconciler · R1-R7"]
         D["Drafter<br/>generate, verify, retry"]
-        E --> I --> R --> D
+        M["Delivery<br/>optional, never fatal"]
+        T -->|"is a payment list"| E --> I --> R --> D --> M
     end
 
+    T -.->|"not a payment list<br/>status: rejected"| REJ["stop<br/>zero Gemini calls"]
     JOB -->|"state on every transition"| FS[("Firestore<br/>audits collection")]
     D --> OUT
+    M -.->|"PDF attachment"| MAIL["email"]
     OUT -.->|"output/ prefix ignored<br/>in launcher AND in job"| EV
     FS --> UI["hoa_agent<br/>ADK, read-only"]
 
     classDef model fill:#8b3a3a,stroke:#5c2626,color:#fff
     classDef det fill:#2d5a4a,stroke:#1c3b30,color:#fff
     classDef infra fill:#3a4a6b,stroke:#26314a,color:#fff
-    class E,D model
-    class I,R det
-    class EV,LA,FS,UI infra
+    class T,E,D model
+    class I,R,M det
+    class EV,LA,FS,UI,REJ,MAIL infra
 ```
 
 **Red = touches a model. Green = deterministic, no network.**
 
 | stage | model | what it does | typical duration |
 |---|---|---|---|
+| Triage | Gemini 2.5 Flash-Lite | first page only: is this a payment list at all? | 4 s |
 | Extractor | Gemini 3.5 Flash, Vertex, `location=global` | transcribes PDF → validated Pydantic | 82 s |
 | Integrity (R0) | **none** | checks the arithmetic of the transcription; targeted re-read only on failure | 0.03 s |
 | Reconciler (R1–R7) | **none** | the audit rules + the coverage report | 0.11 s |
 | Drafter | Gemini 3.5 Flash | writes the letter, verified programmatically | 27 s |
+| Delivery | **none** | emails the letter as a PDF attachment, if configured | 1 s |
 
 The targeted re-read inside Integrity does call the model, but **only when R0
 fails** — on a native document, zero calls.
+
+**The triage gate exists because extraction is expensive.** A PDF that is not a
+payment list would otherwise burn 82 seconds of Gemini to fail schema validation
+at the end. A small model looks at the first page and decides first: measured on
+a real AGA decision, rejected in 3.95 s with zero extractor calls.
+
+The gate **fails open**. If the triage model is unavailable, misbehaves or is
+unconfigured, the pipeline continues. A cost optimisation that can block a valid
+audit costs more than the seconds it saves. Rejected documents get status
+`rejected`, not `failed` — correct routing is not an error.
+
+Gemma would have been the natural choice by size. It is not callable serverless
+on Vertex for this project: every variant returns 404 (gemma-2 and gemma-3, 1b
+through 7b, both naming conventions, in `global`, `us-central1` and
+`europe-west4`). Vertex serves Gemma only through a self-deployed GPU endpoint,
+which would cost more than the Flash seconds it saves. The model is a config key,
+so switching to a Gemma endpoint later is one line.
+
+**Delivery is optional and cannot fail an audit.** It is disabled unless both a
+recipient and an API key are present; transport errors, provider rejections and
+a missing attachment all come back as a recorded failure while the audit status
+stays `done`. The API key lives in Secret Manager, never in the job spec or the
+repository.
 
 ### The rules
 
@@ -448,11 +543,19 @@ first call — but it is not a geometric crop.
 before sending a real request. They are configurable precisely because the amount
 validator cannot verify a legal assertion.
 
-**The extractor is validated against documents from a single generator.** The
-sample layout is realistic, but a list produced by different administration
-software may use headers, abbreviations or structures that the deterministic
-column alignment does not cover. Unmatched keys are reported rather than forced,
-so the failure would be visible, not silent.
+**Heavy abbreviation is handled by the model, not by the deterministic
+aligner.** The generator emits a second, deliberately different layout —
+different header wording, reordered columns, abbreviations instead of full
+names, expense table after the apartment table, two pages. The extractor reads
+it at 100.000% fidelity with no code changes. But the abbreviated column headers
+(`A.R.+can.`, `A.C.M.`, `En.term.`, `F.rep.`, `F.rulm.`) are matched to their
+canonical categories by the model, which receives the category list from pass 1.
+Fed those abbreviations directly, the deterministic prefix aligner resolves only
+2 of 8 — it recognises `Salubr.` and `Admin.` and reports the rest as unresolved.
+The safety net is therefore thinner than the measured result suggests: it catches
+what the model gets wrong, but on this class of header it would hand back six
+`low_confidence_fields` rather than a silent guess. That is the designed
+behaviour, not a defect, but it is not the same as coverage.
 
 ---
 

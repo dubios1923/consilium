@@ -44,6 +44,22 @@
       },
       "note": "Aceleasi constatari plantate ca in documentul sursa; difera doar calitatea imaginii."
     },
+    "sample_clean_alt.pdf": {
+      "variant": "clean",
+      "consumption_annex_present": true,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 8,
+        "expense_lines_unverifiable": []
+      },
+      "expected_finding_count": 0,
+      "expected_finding_ids": [],
+      "declared_total_general": 26789.95,
+      "computed_expense_sum": 26789.95,
+      "derived_from": "sample_clean.pdf",
+      "layout": "alternativ",
+      "note": "Aceleași date și aceleași constatări plantate, alt layout: alte denumiri de antet, altă ordine a coloanelor, abrevieri, tabelul de cheltuieli după cel de apartamente, două pagini."
+    },
     "sample_errors.pdf": {
       "variant": "errors",
       "consumption_annex_present": false,
@@ -94,6 +110,30 @@
       },
       "note": "Aceleasi constatari plantate ca in documentul sursa; difera doar calitatea imaginii."
     },
+    "sample_errors_alt.pdf": {
+      "variant": "errors",
+      "consumption_annex_present": false,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 6,
+        "expense_lines_unverifiable": [
+          "Apă rece + canal",
+          "Apă caldă menajeră"
+        ]
+      },
+      "expected_finding_count": 4,
+      "expected_finding_ids": [
+        "ERR-001",
+        "ERR-002",
+        "ERR-003",
+        "COV-001"
+      ],
+      "declared_total_general": 27689.95,
+      "computed_expense_sum": 26789.95,
+      "derived_from": "sample_errors.pdf",
+      "layout": "alternativ",
+      "note": "Aceleași date și aceleași constatări plantate, alt layout: alte denumiri de antet, altă ordine a coloanelor, abrevieri, tabelul de cheltuieli după cel de apartamente, două pagini."
+    },
     "sample_penalties.pdf": {
       "variant": "penalties",
       "consumption_annex_present": true,
@@ -137,6 +177,27 @@
         "jpeg_quality": 75
       },
       "note": "Aceleasi constatari plantate ca in documentul sursa; difera doar calitatea imaginii."
+    },
+    "sample_penalties_alt.pdf": {
+      "variant": "penalties",
+      "consumption_annex_present": true,
+      "expected_coverage": {
+        "expense_lines_total": 8,
+        "expense_lines_verifiable": 8,
+        "expense_lines_unverifiable": []
+      },
+      "expected_finding_count": 4,
+      "expected_finding_ids": [
+        "PEN-001",
+        "PEN-002",
+        "PEN-003",
+        "PEN-004"
+      ],
+      "declared_total_general": 26789.95,
+      "computed_expense_sum": 26789.95,
+      "derived_from": "sample_penalties.pdf",
+      "layout": "alternativ",
+      "note": "Aceleași date și aceleași constatări plantate, alt layout: alte denumiri de antet, altă ordine a coloanelor, abrevieri, tabelul de cheltuieli după cel de apartamente, două pagini."
     }
   },
   "findings": [

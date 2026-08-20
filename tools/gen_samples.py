@@ -35,6 +35,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
+    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -837,6 +838,233 @@ def render_pdf(document: dict[str, Any], path: Path) -> None:
 
 
 # --------------------------------------------------------------------------
+# Layout alternativ
+#
+# Aceleasi date, acelasi seed, aceleasi erori plantate — alt ambalaj. Exista ca
+# sa se poata masura cat de generala e extractia: un layout inventat de acelasi
+# generator care produce si sample-urile de baza nu dovedeste nimic daca arata
+# la fel. Aici se schimba tot ce se schimba intre doua programe de administrare
+# reale: denumirile din antet, ordinea coloanelor, abrevierile in loc de nume
+# complete, si ordinea sectiunilor (apartamentele inaintea cheltuielilor).
+# --------------------------------------------------------------------------
+
+ALT_HEADER_META = {
+    "title": "SITUAȚIE LUNARĂ DE REPARTIZARE A CHELTUIELILOR",
+    "org_label": "Unitatea",
+    "period_label": "Luna de referință",
+    "count_label": "Nr. unități locative",
+    "posting_label": "Afișat în data de",
+    "due_label": "Scadență",
+    "doc_label": "Nr. document",
+}
+
+# Abrevierile din antetul de coloana, in loc de denumirile complete. Etichetele
+# canonice raman cele din tabelul de cheltuieli, ca in orice document real.
+ALT_COLUMN_ABBREVIATIONS = {
+    "apa_rece": "A.R.+can.",
+    "apa_calda": "A.C.M.",
+    "caldura": "En.term.",
+    "salubritate": "Salubr.",
+    "lift": "Lift",
+    "administrare": "Admin.",
+    "fond_reparatii": "F.rep.",
+    "fond_rulment": "F.rulm.",
+}
+
+# Ordinea coloanelor de cheltuiala, alta decat in layout-ul de baza.
+ALT_CATEGORY_ORDER = [
+    "administrare",
+    "fond_rulment",
+    "fond_reparatii",
+    "lift",
+    "salubritate",
+    "caldura",
+    "apa_calda",
+    "apa_rece",
+]
+
+
+def alt_apartment_table(
+    document: dict[str, Any], style: dict[str, ParagraphStyle]
+) -> Table:
+    """Tabelul de apartamente cu ordinea si abrevierile layout-ului alternativ."""
+    headers = ["Unit.", "Cotă%", "Pers."]
+    headers += [ALT_COLUMN_ABBREVIATIONS[key] for key in ALT_CATEGORY_ORDER]
+    headers += ["Restanță", "Penaliz.", "Curent", "DE ACHITAT"]
+    rows: list[list[Any]] = [
+        [Paragraph(text, style["th"]) for text in headers]
+    ]
+
+    for apartment in document["apartment_lines"]:
+        row = [
+            apartment["apartment_no"],
+            f"{apartment['cota_indiviza']:.2f}".replace(".", ","),
+            str(apartment["persons"]),
+        ]
+        row += [fmt(apartment["charges"][key]) for key in ALT_CATEGORY_ORDER]
+        row += [
+            fmt(apartment["arrears"]),
+            fmt(apartment["penalties"]),
+            fmt(apartment["current_charges_total"]),
+            fmt(apartment["total_due"]),
+        ]
+        rows.append(row)
+
+    apartments = document["apartment_lines"]
+    total_row = [
+        "TOTAL",
+        f"{sum(a['cota_indiviza'] for a in apartments):.2f}".replace(".", ","),
+        str(sum(a["persons"] for a in apartments)),
+    ]
+    total_row += [
+        fmt(money(sum(a["charges"][key] for a in apartments)))
+        for key in ALT_CATEGORY_ORDER
+    ]
+    total_row += [
+        fmt(money(sum(a["arrears"] for a in apartments))),
+        fmt(money(sum(a["penalties"] for a in apartments))),
+        fmt(money(sum(a["current_charges_total"] for a in apartments))),
+        fmt(money(sum(a["total_due"] for a in apartments))),
+    ]
+    rows.append(total_row)
+
+    widths = [12, 14, 11] + [20] * 8 + [21, 20, 23, 26]
+    table = Table(
+        rows,
+        colWidths=[width * mm for width in widths],
+        repeatRows=1,
+        hAlign="LEFT",
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 1), (-1, -1), FONT_REGULAR),
+                ("FONTNAME", (0, -1), (-1, -1), FONT_BOLD),
+                ("FONTSIZE", (0, 1), (-1, -1), 6),
+                ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BACKGROUND", (0, 0), (-1, 0), HEAD),
+                ("BACKGROUND", (0, -1), (-1, -1), BAND),
+                ("GRID", (0, 0), (-1, -1), 0.3, RULE),
+                ("TEXTCOLOR", (0, 0), (-1, -1), INK),
+                ("TOPPADDING", (0, 1), (-1, -1), 1.6),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 1.6),
+            ]
+        )
+    )
+    return table
+
+
+def alt_expense_table(
+    document: dict[str, Any], style: dict[str, ParagraphStyle]
+) -> Table:
+    """Tabelul de cheltuieli, cu coloanele in alta ordine si alte denumiri."""
+    by_key = {line["key"]: line for line in document["expense_lines"]}
+    rows = [["Mod de repartizare", "Denumire cheltuială", "Act justificativ",
+             "Valoare (RON)"]]
+    for key in ALT_CATEGORY_ORDER:
+        line = by_key[key]
+        rows.append(
+            [
+                KEY_LABELS[line["distribution_key"]],
+                line["category"],
+                line["source_invoice_ref"],
+                fmt(line["amount"]),
+            ]
+        )
+    rows.append(
+        ["", "TOTAL CHELTUIELI", "",
+         fmt(document["declared_totals"]["total_general"])]
+    )
+
+    table = Table(
+        rows, colWidths=[45 * mm, 70 * mm, 55 * mm, 35 * mm], hAlign="LEFT"
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), FONT_REGULAR),
+                ("FONTNAME", (0, 0), (-1, 0), FONT_BOLD),
+                ("FONTNAME", (0, -1), (-1, -1), FONT_BOLD),
+                ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+                ("BACKGROUND", (0, 0), (-1, 0), HEAD),
+                ("BACKGROUND", (0, -1), (-1, -1), BAND),
+                ("ALIGN", (3, 0), (3, -1), "RIGHT"),
+                ("GRID", (0, 0), (-1, -1), 0.35, RULE),
+                ("TEXTCOLOR", (0, 0), (-1, -1), INK),
+                ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+            ]
+        )
+    )
+    return table
+
+
+def render_alt_pdf(document: dict[str, Any], path: Path) -> None:
+    """Randeaza layout-ul alternativ: apartamentele intai, cheltuielile dupa."""
+    style = styles()
+    meta = document["_meta"]
+    doc = SimpleDocTemplate(
+        str(path),
+        pagesize=landscape(A4),
+        leftMargin=8 * mm,
+        rightMargin=8 * mm,
+        topMargin=9 * mm,
+        bottomMargin=9 * mm,
+        title=ALT_HEADER_META["title"],
+        author="Consilium – generator de date sintetice",
+        invariant=1,
+    )
+
+    header = (
+        f"{ALT_HEADER_META['org_label']}: {document['association_ref']} "
+        f"&nbsp;·&nbsp; {ALT_HEADER_META['doc_label']}: {document['document_id']} "
+        f"&nbsp;·&nbsp; {ALT_HEADER_META['period_label']}: {document['period']}"
+    )
+    header2 = (
+        f"{ALT_HEADER_META['count_label']}: "
+        f"{document['declared_totals']['apartment_count']} &nbsp;·&nbsp; "
+        f"{ALT_HEADER_META['posting_label']}: {meta['display_date']} "
+        f"&nbsp;·&nbsp; {ALT_HEADER_META['due_label']}: {meta['due_date']} "
+        f"&nbsp;·&nbsp; {meta['address']} &nbsp;·&nbsp; CIF {meta['cif']}"
+    )
+
+    story: list[Any] = [
+        Paragraph(ALT_HEADER_META["title"], style["title"]),
+        Paragraph(header, style["sub"]),
+        Paragraph(header2, style["sub"]),
+        Paragraph(
+            f"Penalizările din prezenta situație sunt calculate pentru "
+            f"{PENALTY_DAYS} de zile de întârziere.",
+            style["sub"],
+        ),
+        Paragraph("A. Defalcare pe unități locative", style["section"]),
+        alt_apartment_table(document, style),
+        PageBreak(),
+        Paragraph("B. Centralizator cheltuieli", style["section"]),
+        alt_expense_table(document, style),
+    ]
+
+    if meta["show_consumption"]:
+        story += [
+            Paragraph("C. Contorizări individuale", style["section"]),
+            consumption_table(document, style),
+        ]
+
+    story += [
+        Spacer(1, 5),
+        Paragraph(
+            "DOCUMENT FICTIV, GENERAT AUTOMAT PENTRU TESTAREA APLICAȚIEI CONSILIUM. "
+            "Asociația, adresa, codul fiscal, furnizorii, numerele de factură și "
+            "toate sumele sunt inventate și nu corespund niciunei entități reale.",
+            style["note"],
+        ),
+    ]
+    doc.build(story)
+
+
+# --------------------------------------------------------------------------
 # Varianta scanata
 #
 # Aceleasi documente, trecute printr-un lant de degradare care imita un scan de
@@ -942,6 +1170,11 @@ def main() -> None:
         help="directorul de iesire (implicit: samples/synthetic)",
     )
     parser.add_argument(
+        "--skip-alt-layout",
+        action="store_true",
+        help="nu genera varianta cu layout alternativ",
+    )
+    parser.add_argument(
         "--skip-scanned",
         action="store_true",
         help="nu genera variantele scanate (necesita pdftoppm, Pillow, numpy)",
@@ -1011,6 +1244,21 @@ def main() -> None:
         print(f"scris {out_dir / filename}  ({len(findings)} constatări plantate)")
         if scanned_name:
             print(f"scris {out_dir / scanned_name}  (variantă scanată)")
+
+        if not args.skip_alt_layout:
+            alt_name = filename.replace(".pdf", "_alt.pdf")
+            render_alt_pdf(document, out_dir / alt_name)
+            summary[alt_name] = dict(
+                summary[filename],
+                derived_from=filename,
+                layout="alternativ",
+                note=(
+                    "Aceleași date și aceleași constatări plantate, alt layout: "
+                    "alte denumiri de antet, altă ordine a coloanelor, abrevieri, "
+                    "tabelul de cheltuieli după cel de apartamente, două pagini."
+                ),
+            )
+            print(f"scris {out_dir / alt_name}  (layout alternativ)")
 
     payload = {
         "generator": "tools/gen_samples.py",

@@ -156,17 +156,33 @@ def main() -> int:
     args = parser.parse_args()
 
     path = Path(args.json_path)
-    variant = args.variant or path.stem.replace("sample_", "").replace(
-        "_scanned", ""
+    variant = (
+        args.variant
+        or path.stem.replace("sample_", "").replace("_scanned", "").replace("_alt", "")
     )
     extracted = json.loads(path.read_text(encoding="utf-8"))
     expected = ground_truth(variant)
 
-    mismatches: list[tuple] = []
-    total = compare("", expected, {k: extracted.get(k) for k in expected}, mismatches)
+    # Ordinea pozitiilor de cheltuiala e o alegere de layout, nu un fapt despre
+    # document: reconciler-ul le leaga dupa `category`, nu dupa index. Comparam
+    # dupa categorie, altfel un layout care reordoneaza tabelul apare ca 29 de
+    # erori de transcriere care nu exista.
+    def by_category(lines: list) -> dict:
+        return {line["category"]: line for line in lines}
 
-    scanned = "_scanned" in path.stem
-    label = f"{variant} scanat" if scanned else variant
+    found = {key: extracted.get(key) for key in expected}
+    if isinstance(found.get("expense_lines"), list):
+        expected = dict(expected, expense_lines=by_category(expected["expense_lines"]))
+        found["expense_lines"] = by_category(found["expense_lines"])
+
+    mismatches: list[tuple] = []
+    total = compare("", expected, found, mismatches)
+
+    label = variant
+    if "_scanned" in path.stem:
+        label += " scanat"
+    if "_alt" in path.stem:
+        label += " layout alternativ"
     print(f"=== {path.name} (varianta: {label}) ===")
     print(f"campuri comparate : {total}")
     print(f"nepotriviri       : {len(mismatches)}")
