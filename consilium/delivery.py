@@ -37,9 +37,16 @@ from consilium.schema import PaymentList
 DEFAULT_PROVIDER_URL = "https://api.resend.com/emails"
 DEFAULT_SENDER = "Consilium <consilium@datahappens.ro>"
 REQUEST_TIMEOUT_SECONDS = 20
+# Fără un User-Agent propriu, Cloudflare din fața API-ului respinge cererea
+# cu 403 / error code 1010, pe semnătura implicită a urllib.
+USER_AGENT = "consilium/1.0 (+https://github.com/dubios1923/consilium)"
 
 ENV_RECIPIENT = "CONSILIUM_DELIVERY_TO"
 ENV_API_KEY = "CONSILIUM_DELIVERY_API_KEY"
+# Numele nativ al providerului, acceptat ca alias: deploy-ul citește
+# RESEND_API_KEY din mediu și îl montează în job sub numele canonic, iar o
+# rulare locală trebuie să meargă cu același fișier de secrete.
+ENV_API_KEY_ALIAS = "RESEND_API_KEY"
 ENV_SENDER = "CONSILIUM_DELIVERY_FROM"
 ENV_PROVIDER_URL = "CONSILIUM_DELIVERY_URL"
 
@@ -68,7 +75,9 @@ class DeliveryConfig:
         """
         source = os.environ if env is None else env
         recipient = (source.get(ENV_RECIPIENT) or "").strip()
-        api_key = (source.get(ENV_API_KEY) or "").strip()
+        api_key = (
+            source.get(ENV_API_KEY) or source.get(ENV_API_KEY_ALIAS) or ""
+        ).strip()
         if not recipient or not api_key:
             return None
         return cls(
@@ -216,7 +225,12 @@ def http_transport(
     request = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={**headers, "Content-Type": "application/json"},
+        headers={
+            **headers,
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+        },
         method="POST",
     )
     try:

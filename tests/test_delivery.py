@@ -303,3 +303,23 @@ def test_config_yaml_has_no_delivery_credentials():
     lowered = content.lower()
     for forbidden in ("api_key", "apikey", "password", "secret", "token"):
         assert forbidden not in lowered, f"`{forbidden}` nu are ce căuta în config"
+
+
+def test_provider_native_key_name_is_accepted():
+    """`deploy.sh` citește RESEND_API_KEY; același fișier trebuie să meargă local."""
+    from consilium.delivery import ENV_API_KEY_ALIAS
+
+    config = DeliveryConfig.from_env(
+        {ENV_RECIPIENT: RECIPIENT, ENV_API_KEY_ALIAS: "cheie"}
+    )
+    assert config is not None
+    assert config.api_key == "cheie"
+
+
+def test_canonical_key_name_wins_over_the_alias():
+    from consilium.delivery import ENV_API_KEY_ALIAS
+
+    config = DeliveryConfig.from_env(
+        {ENV_RECIPIENT: RECIPIENT, ENV_API_KEY: "canonic", ENV_API_KEY_ALIAS: "alias"}
+    )
+    assert config.api_key == "canonic"
