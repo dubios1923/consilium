@@ -128,7 +128,7 @@ caught it because the row stopped summing, the re-read disagreed, and the cell
 was marked unauditable instead of becoming an accusation. Zero false audit
 findings.
 
-267 tests, all offline, none of which calls a model.
+274 tests, all offline, none of which calls a model.
 
 ## What I learned
 

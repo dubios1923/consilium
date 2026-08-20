@@ -70,8 +70,8 @@ report, written to Cloud Storage and emailed as an attachment.
 - **Google Cloud**: Cloud Storage for intake and artifacts, Eventarc for the
   trigger, a Cloud Run Job for the pipeline, two Cloud Run services (an event
   launcher and the inspection page), Firestore for audit state, Secret Manager
-  for the delivery key, Cloud Build and Artifact Registry for deployment, and
-  Cloud Text-to-Speech for the demo narration.
+  for the delivery key, Cloud Build and Artifact Registry for deployment,
+  Cloud Text-to-Speech for the demo narration and Lyria for its score.
 
 Four of the six sub-agents are `BaseAgent` subclasses running ordinary Python
 rather than `LlmAgent`. Only triage, extraction and letter drafting touch a
@@ -131,7 +131,7 @@ aligner resolves two of eight and reports the rest rather than guessing.
 
 ## Status
 
-Deployed and running. 257 tests, all offline, none of which calls a model.
+Deployed and running. 274 tests, all offline, none of which calls a model.
 Uploading a file to the intake bucket triggers a real Cloud Run job execution
 through Eventarc, and the demo video shows that happening rather than asserting
 it.

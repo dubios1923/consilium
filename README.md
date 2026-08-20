@@ -606,7 +606,7 @@ nineteen second line becomes a speed-up with a badge on screen.
 ## 6. Tests
 
 ```bash
-.venv/bin/python -m pytest tests/ -q      # 257 tests, ~5 s
+.venv/bin/python -m pytest tests/ -q      # 274 tests, ~6 s
 .venv/bin/ruff check consilium/ job/ tools/ tests/ hoa_agent/
 ```
 
@@ -614,12 +614,12 @@ All of them run offline. None calls a model.
 
 | suite | tests | what it guarantees |
 |---|---|---|
-| `test_delivery.py` | 71 | Delivery is opt-in and cannot fail an audit: half a configuration counts as disabled, transport errors and provider rejections come back recorded rather than raised, and a summary that would quote an uncomputed figure is refused before anything is sent. Also scans every tracked source file for key-shaped strings, with a positive control so the scanner cannot pass by being too narrow. |
+| `test_delivery.py` | 72 | Delivery is opt-in and cannot fail an audit: half a configuration counts as disabled, transport errors and provider rejections come back recorded rather than raised, and a summary that would quote an uncomputed figure is refused before anything is sent. Also scans every tracked source file for key-shaped strings, with a positive control so the scanner cannot pass by being too narrow. |
 | `test_acceptance.py` | 21 | The reconciler finds **every** planted finding on `sample_errors` and `sample_penalties`, and **zero** on `sample_clean`. Each finding checked individually against `expected_findings.json`. Includes the scan acceptance case: R0 catches the bad cell, zero false audit findings, the remaining rules stay verified. |
 | `test_reconciler.py` | 26 | ≥2 tests per rule R1–R6. Includes skimming below the per-apartment threshold, the rounding remainder that must **not** fire, a penalty charged with no arrears, and an AST test that structurally verifies `reconciler.py` imports none of `google`, `genai`, `httpx`, `requests`, `urllib`, `socket`, `aiohttp`. |
 | `test_letter_rendering.py` | 21 | The letter PDF verified through `pdftotext` rather than by eye, because the visual check is what missed the original defect. Font resolution is never Helvetica, every Romanian glyph survives the round trip, the section heading is not glued to the list numbering, and rendering alters no wording. |
 | `test_contestation_window.py` | 19 | R7 across every state of the window: open, last day, expired, missing posting date, missing reference date. Plus letter-mode selection and the prohibition on invoking alin. (3) after expiry. |
-| `test_dashboard.py` | 17 | The inspection page is read only, enforced structurally by asserting the app exposes only GET and HEAD. Rejected audits explain the decision, a clean document says so rather than showing nothing, record content is escaped, and a missing audit is 404 rather than a cheerful 200. |
+| `test_dashboard.py` | 33 | The inspection page is read only, enforced structurally by asserting the app exposes only GET and HEAD. Rejected audits explain the decision, a clean document says so rather than showing nothing, record content is escaped, and a missing audit is 404 rather than a cheerful 200. |
 | `test_job_filter.py` | 16 | The anti-loop filter. `output/` never reprocessed, non-PDFs ignored, but `liste/output/x.pdf` still processed (prefix, not substring). Every audit gets its own directory. |
 | `test_drafter.py` | 14 | No invented amount, including one that was *correctly recomputed*. No invented, misattributed, omitted or duplicated finding. Romanian money-format parsing. |
 | `test_triage.py` | 12 | The entry gate accepts, rejects, and above all fails open: a model error, an unreadable PDF, an invalid response and a disabled gate all let the document through. Disabled triage never calls the model at all. |
