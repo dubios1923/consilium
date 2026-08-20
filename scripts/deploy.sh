@@ -10,6 +10,16 @@ set -euo pipefail
 # interactivă pentru crearea repository-ului Artifact Registry și blochează totul.
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
+# Secretele de livrare se pun în .env.delivery (ignorat de git), ca să nu treacă
+# prin linia de comandă și prin istoricul shell-ului. Fișierul e opțional.
+if [ -f .env.delivery ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env.delivery
+  set +a
+  echo "== încărcat .env.delivery =="
+fi
+
 PROJECT="${PROJECT:-hoa-agent-ab7x21}"
 REGION="${REGION:-europe-west1}"
 BUCKET="${BUCKET:-consilium-intake-ab7x21}"
