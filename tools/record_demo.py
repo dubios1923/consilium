@@ -38,6 +38,12 @@ MANIFEST = OUT_DIR / "manifest.json"
 VIEWPORT = {"width": 1440, "height": 900}
 WAIT_LIMIT_SECONDS = 240
 
+# Capturi PNG in loc de inregistrare video. Playwright scrie VP8 la ~500 kbps,
+# ceea ce face textul din terminal pasta la orice miscare; sursa devine astfel
+# plafonul calitatii, indiferent cat de generos e exportul final. Cu capturi,
+# sursa e fara pierdere si singura limita ramane encodarea noastra.
+CAPTURE_FPS = 3.0
+
 CARD_CSS = """
 * { box-sizing: border-box; }
 body { margin:0; height:100vh; display:flex; flex-direction:column;
@@ -161,22 +167,39 @@ def audit_for(source_name: str) -> dict[str, Any] | None:
     return None
 
 
-def hold(seconds: float) -> None:
-    time.sleep(max(0.0, seconds))
+class Shots:
+    """Tine cadrul si captureaza, in loc sa doarma."""
+
+    def __init__(self, page: Any, directory: Path) -> None:
+        self.page = page
+        self.directory = directory
+        self.count = 0
+        directory.mkdir(parents=True, exist_ok=True)
+
+    def hold(self, seconds: float) -> None:
+        deadline = time.time() + max(0.0, seconds)
+        interval = 1.0 / CAPTURE_FPS
+        while True:
+            began = time.time()
+            self.count += 1
+            self.page.screenshot(
+                path=str(self.directory / f"{self.count:05d}.png"), animations="disabled"
+            )
+            if time.time() >= deadline:
+                return
+            time.sleep(max(0.0, interval - (time.time() - began)))
 
 
 def record_scene(
     browser: Any, scene: Scene, seconds: float, state: dict[str, Any], dashboard: str
-) -> Path:
-    """Înregistrează o scenă într-un context propriu. Întoarce fișierul video."""
+) -> Any:
+    """Capturează o scenă într-un context propriu. Întoarce setul de capturi."""
     context = browser.new_context(
-        viewport=VIEWPORT,
-        record_video_dir=str(OUT_DIR / "raw"),
-        record_video_size=VIEWPORT,
-        device_scale_factor=1,
-        color_scheme="dark",
+        viewport=VIEWPORT, device_scale_factor=1, color_scheme="dark"
     )
     page = context.new_page()
+    shots = Shots(page, OUT_DIR / "shots" / scene.key)
+    hold = shots.hold
     try:
         if scene.action == "card":
             page.set_content(card_html(scene))
@@ -236,11 +259,10 @@ def record_scene(
         else:
             raise ValueError(f"acțiune necunoscută: {scene.action}")
     finally:
-        path = Path(page.video.path()) if page.video else None
         context.close()
-    if path is None:
-        raise RuntimeError(f"nicio înregistrare pentru scena {scene.key}")
-    return path
+    if shots.count == 0:
+        raise RuntimeError(f"nicio captură pentru scena {scene.key}")
+    return shots
 
 
 def main() -> int:
@@ -257,7 +279,7 @@ def main() -> int:
     audio = json.loads(Path("demo/audio/manifest.json").read_text(encoding="utf-8"))
     durations = {entry["key"]: entry["seconds"] for entry in audio["scenes"]}
 
-    (OUT_DIR / "raw").mkdir(parents=True, exist_ok=True)
+    (OUT_DIR / "shots").mkdir(parents=True, exist_ok=True)
     from playwright.sync_api import sync_playwright
 
     state: dict[str, Any] = {}
@@ -280,7 +302,7 @@ def main() -> int:
                 state["current"] = None
             print(f"  {scene.key:18s} ținta {target:5.1f}s ...", flush=True)
             began = time.time()
-            path = record_scene(browser, scene, target, state, args.dashboard)
+            shots = record_scene(browser, scene, target, state, args.dashboard)
             if scene.action == "upload":
                 state["current"] = state.get(scene.sample)
             actual = time.time() - began
@@ -288,12 +310,13 @@ def main() -> int:
             entries.append(
                 {
                     "key": scene.key,
-                    "video": str(path),
+                    "shots": str(shots.directory),
+                    "frames": shots.count,
                     "target_seconds": round(target, 3),
                     "recorded_seconds": round(actual, 3),
                 }
             )
-            print(f"    {actual:6.1f}s real -> {Path(path).name}", flush=True)
+            print(f"    {actual:6.1f}s real, {shots.count} cadre", flush=True)
         browser.close()
 
     MANIFEST.write_text(

@@ -23,6 +23,7 @@ WORK = Path("demo/build")
 OUTPUT = Path("demo/consilium_demo.mp4")
 FONT = "/usr/share/fonts/liberation-sans-fonts/LiberationSans-Bold.ttf"
 FPS = 30
+CAPTURE_FPS = 3.0
 SPEED_BADGE_THRESHOLD = 1.6
 
 
@@ -40,14 +41,17 @@ def run(command: list[str]) -> None:
 
 
 def fit_scene(
-    source: Path, target_seconds: float, index: int, key: str, work: Path
-) -> Path:
-    """Aduce o scenă exact la durata replicii ei."""
-    actual = probe_duration(source)
-    factor = actual / target_seconds
-    out = work / f"{index:02d}_{key}.mp4"
+    shots: Path, frames: int, target_seconds: float, index: int, key: str, work: Path
+) -> tuple[Path, float]:
+    """Aduce o scena exact la durata replicii ei, dintr-un sir de capturi PNG.
 
-    filters = [f"setpts=PTS/{factor:.6f}", f"fps={FPS}"]
+    Sursa e fara pierdere, deci singura limita de calitate e encodarea de aici.
+    """
+    out = work / f"{index:02d}_{key}.mp4"
+    source_fps = frames / target_seconds
+    factor = source_fps / CAPTURE_FPS
+
+    filters = [f"fps={FPS}"]
     if factor >= SPEED_BADGE_THRESHOLD and Path(FONT).exists():
         label = f"{factor:.0f}x speed"
         filters.append(
@@ -56,13 +60,14 @@ def fit_scene(
         )
 
     run([
-        "ffmpeg", "-y", "-loglevel", "error", "-i", str(source),
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-framerate", f"{source_fps:.6f}", "-i", str(shots / "%05d.png"),
         "-vf", ",".join(filters),
         "-an", "-t", f"{target_seconds:.3f}",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+        "-c:v", "libx264", "-preset", "slow", "-crf", "16",
         "-pix_fmt", "yuv420p", str(out),
     ])
-    return out
+    return out, factor
 
 
 def main() -> int:
@@ -86,15 +91,16 @@ def main() -> int:
         if key not in recorded:
             print(f"  sar peste {key}: nu are înregistrare")
             continue
-        source = Path(recorded[key]["video"])
+        item = recorded[key]
         target = max(entry["seconds"], entry["min_seconds"])
-        actual = probe_duration(source)
-        piece = fit_scene(source, target, entry["index"], key, work)
+        piece, factor = fit_scene(
+            Path(item["shots"]), item["frames"], target, entry["index"], key, work
+        )
         pieces.append(piece)
         tracks.append(Path(entry["audio"]))
         total += target
-        print(f"  {key:18s} {actual:6.1f}s -> {target:5.1f}s "
-              f"({actual / target:4.1f}x)")
+        print(f"  {key:18s} {item['recorded_seconds']:6.1f}s -> {target:5.1f}s "
+              f"({factor:4.1f}x, {item['frames']} cadre)")
 
     if not pieces:
         print("nicio scenă de montat")
@@ -118,7 +124,8 @@ def main() -> int:
 
     run(["ffmpeg", "-y", "-loglevel", "error",
          "-i", str(silent), "-i", str(narration),
-         "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest",
+         "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+         "-shortest",
          args.out])
 
     minutes, seconds = divmod(probe_duration(Path(args.out)), 60)

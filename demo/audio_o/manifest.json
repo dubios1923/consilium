@@ -1,14 +1,14 @@
 {
   "voice": "en-US-Studio-O",
   "rate": 1.0,
-  "total_seconds": 243.45,
+  "total_seconds": 237.57,
   "scenes": [
     {
       "index": 0,
       "key": "problem",
       "action": "card",
       "audio": "demo/audio_o/00_problem.wav",
-      "seconds": 16.575,
+      "seconds": 16.155,
       "min_seconds": 0.0
     },
     {
@@ -16,7 +16,7 @@
       "key": "thesis",
       "action": "card",
       "audio": "demo/audio_o/01_thesis.wav",
-      "seconds": 15.175,
+      "seconds": 14.755,
       "min_seconds": 0.0
     },
     {
@@ -24,7 +24,7 @@
       "key": "gate_upload",
       "action": "upload",
       "audio": "demo/audio_o/02_gate_upload.wav",
-      "seconds": 8.725,
+      "seconds": 8.305,
       "min_seconds": 6.0
     },
     {
@@ -32,7 +32,7 @@
       "key": "gate_result",
       "action": "wait_state",
       "audio": "demo/audio_o/03_gate_result.wav",
-      "seconds": 14.35,
+      "seconds": 13.93,
       "min_seconds": 6.0
     },
     {
@@ -40,7 +40,7 @@
       "key": "real_upload",
       "action": "upload",
       "audio": "demo/audio_o/04_real_upload.wav",
-      "seconds": 2.925,
+      "seconds": 2.505,
       "min_seconds": 5.0
     },
     {
@@ -48,7 +48,7 @@
       "key": "pipeline",
       "action": "wait_state",
       "audio": "demo/audio_o/05_pipeline.wav",
-      "seconds": 18.8,
+      "seconds": 18.38,
       "min_seconds": 8.0
     },
     {
@@ -56,7 +56,7 @@
       "key": "findings",
       "action": "detail",
       "audio": "demo/audio_o/06_findings.wav",
-      "seconds": 22.15,
+      "seconds": 21.73,
       "min_seconds": 10.0
     },
     {
@@ -64,7 +64,7 @@
       "key": "coverage",
       "action": "detail",
       "audio": "demo/audio_o/07_coverage.wav",
-      "seconds": 16.55,
+      "seconds": 16.13,
       "min_seconds": 9.0
     },
     {
@@ -72,7 +72,7 @@
       "key": "letter",
       "action": "letter",
       "audio": "demo/audio_o/08_letter.wav",
-      "seconds": 25.6,
+      "seconds": 25.18,
       "min_seconds": 12.0
     },
     {
@@ -80,7 +80,7 @@
       "key": "finding_r0",
       "action": "card",
       "audio": "demo/audio_o/09_finding_r0.wav",
-      "seconds": 27.2,
+      "seconds": 26.78,
       "min_seconds": 14.0
     },
     {
@@ -88,7 +88,7 @@
       "key": "finding_baseline",
       "action": "card",
       "audio": "demo/audio_o/10_finding_baseline.wav",
-      "seconds": 26.0,
+      "seconds": 25.58,
       "min_seconds": 16.0
     },
     {
@@ -96,7 +96,7 @@
       "key": "proof",
       "action": "terminal",
       "audio": "demo/audio_o/11_proof.wav",
-      "seconds": 11.8,
+      "seconds": 11.38,
       "min_seconds": 14.0
     },
     {
@@ -104,7 +104,7 @@
       "key": "architecture",
       "action": "card",
       "audio": "demo/audio_o/12_architecture.wav",
-      "seconds": 18.525,
+      "seconds": 18.105,
       "min_seconds": 12.0
     },
     {
@@ -112,7 +112,7 @@
       "key": "close",
       "action": "card",
       "audio": "demo/audio_o/13_close.wav",
-      "seconds": 19.075,
+      "seconds": 18.655,
       "min_seconds": 12.0
     }
   ]

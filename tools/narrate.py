@@ -27,7 +27,10 @@ OUT_DIR = Path("demo/audio")
 MANIFEST = OUT_DIR / "manifest.json"
 DEFAULT_VOICE = "en-US-Neural2-D"
 DEFAULT_LANGUAGE = "en-US"
-SAMPLE_RATE = 24000
+# 48 kHz: Studio genereaza nativ la 24 kHz, deci nu adauga detaliu, dar
+# evita artefactele encoderului AAC la rata mica, de unde vine sunetul
+# infundat.
+SAMPLE_RATE = 48000
 
 
 def list_voices(language: str) -> None:
@@ -85,8 +88,8 @@ def main() -> int:
     parser.add_argument("--voice", default=DEFAULT_VOICE)
     parser.add_argument("--language", default=DEFAULT_LANGUAGE)
     parser.add_argument("--rate", type=float, default=1.0)
-    parser.add_argument("--lead", type=float, default=0.35)
-    parser.add_argument("--tail", type=float, default=0.55)
+    parser.add_argument("--lead", type=float, default=0.18)
+    parser.add_argument("--tail", type=float, default=0.30)
     parser.add_argument("--list-voices", action="store_true")
     parser.add_argument(
         "--out-dir",
