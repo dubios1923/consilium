@@ -1,4 +1,10 @@
-# Asking a model how confident it is does not detect its own reading errors
+---
+title: Asking a model how confident it is does not detect its own reading errors
+published: true
+description: I built an agent that audits Romanian homeowners' association payment lists. The extractor hit 99.61% fidelity on a degraded scan, flagged nothing, and got two cells wrong.
+tags: googlecloud, ai, agents, python
+cover_image: https://raw.githubusercontent.com/dubios1923/consilium/master/demo/gallery/architecture.png
+---
 
 *I wrote this post for the purposes of entering the All Things Agentic
 Hackathon, about the agent I built for it. Here is the part that surprised me.*
