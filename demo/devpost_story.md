@@ -78,9 +78,12 @@ with different headers and abbreviations, and a degraded 150 dpi scan with skew,
 noise and JPEG compression. Same seed, same MD5.
 
 Even the demo video is generated rather than filmed. A storyboard holds
-narration and visual action together, Cloud Text-to-Speech produces the voice,
-Playwright drives the browser and captures lossless frames, and ffmpeg fits each
-scene to the length of its line.
+narration and visual action together, Playwright drives the browser and captures
+lossless frames, and ffmpeg fits each scene to the length of its line. Two more
+Google models do the audio: Cloud Text-to-Speech produces the narration, and
+Lyria writes the score, which is sidechained to the voice so it steps aside
+whenever somebody is speaking. Veo and Gemma were both tried and are not
+callable in this project, which is documented rather than worked around.
 
 ## Challenges I ran into
 

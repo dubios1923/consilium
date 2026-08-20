@@ -74,6 +74,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default=str(OUTPUT))
     parser.add_argument("--audio", default=str(AUDIO_MANIFEST))
+    parser.add_argument(
+        "--score",
+        help="pat muzical optional; se aseaza sub voce si se da la o parte "
+        "cand se vorbeste",
+    )
     args = parser.parse_args()
 
     audio = json.loads(Path(args.audio).read_text(encoding="utf-8"))
@@ -122,8 +127,27 @@ def main() -> int:
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
          "-i", str(audio_listing), "-c", "copy", str(narration)])
 
+    if args.score and Path(args.score).is_file():
+        # Muzica sta sub voce si e comprimata de ea prin sidechain, deci nu se
+        # regleaza volumul de mana pe fiecare replica. `normalize=0` opreste
+        # amix sa scada tot mixul cand adauga a doua sursa.
+        mixed = work / "mixed.wav"
+        run(["ffmpeg", "-y", "-loglevel", "error",
+             "-i", str(narration), "-i", str(args.score),
+             "-filter_complex", (
+                 "[1:a]volume=0.34,afade=t=in:d=3,"
+                 f"afade=t=out:st={max(0.0, total - 4):.2f}:d=4[bed];"
+                 "[bed][0:a]sidechaincompress=threshold=0.02:ratio=12:"
+                 "attack=15:release=350[ducked];"
+                 "[ducked][0:a]amix=inputs=2:normalize=0:duration=longest[out]"
+             ),
+             "-map", "[out]", str(mixed)])
+        track = mixed
+    else:
+        track = narration
+
     run(["ffmpeg", "-y", "-loglevel", "error",
-         "-i", str(silent), "-i", str(narration),
+         "-i", str(silent), "-i", str(track),
          "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
          "-shortest",
          args.out])
