@@ -15,10 +15,13 @@ Rulare:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import subprocess
 import sys
+import tempfile
 import time
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +62,42 @@ def card_html(scene: Scene) -> str:
         f"<style>{CARD_CSS}</style></head><body>"
         f"<h1>{scene.card_title}</h1><ul>{items}</ul>"
         f"<div class='mark'>Consilium</div></body></html>"
+    )
+
+
+LETTER_CSS = """
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; background:#101216; padding:34px 0;
+       display:flex; gap:26px; justify-content:center; align-items:flex-start; }
+img { width:44%; max-width:560px; border-radius:6px;
+      box-shadow:0 18px 50px rgba(0,0,0,.65); }
+"""
+
+
+def letter_html(pdf: bytes, pages: int = 2) -> str:
+    """Randeaza scrisoarea ca imagini si o aseaza intr-o pagina.
+
+    Chromium headless nu afiseaza PDF-uri: `page.goto` catre un PDF declanseaza
+    o descarcare si arunca. Randam noi paginile, ceea ce da si control asupra
+    incadraturii.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        source = Path(tmp) / "letter.pdf"
+        source.write_bytes(pdf)
+        subprocess.run(
+            ["pdftoppm", "-r", "150", "-png", "-f", "1", "-l", str(pages),
+             str(source), str(Path(tmp) / "p")],
+            check=True, capture_output=True,
+        )
+        images = sorted(Path(tmp).glob("p-*.png"))
+        tags = "".join(
+            f'<img src="data:image/png;base64,'
+            f'{base64.b64encode(image.read_bytes()).decode()}">'
+            for image in images
+        )
+    return (
+        f"<!doctype html><html><head><meta charset='utf-8'>"
+        f"<style>{LETTER_CSS}</style></head><body>{tags}</body></html>"
     )
 
 
@@ -130,10 +169,10 @@ def record_scene(
             hold(seconds)
 
         elif scene.action == "letter":
-            page.goto(
-                f"{dashboard}/audit/{state['last_audit']}/letter",
-                wait_until="load",
-            )
+            url = f"{dashboard}/audit/{state['last_audit']}/letter"
+            with urllib.request.urlopen(url, timeout=30) as response:
+                pdf = response.read()
+            page.set_content(letter_html(pdf))
             hold(seconds)
 
         else:
@@ -150,6 +189,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dashboard", default=DASHBOARD)
     parser.add_argument("--only", nargs="*", help="doar scenele cu aceste chei")
+    parser.add_argument(
+        "--audit-id",
+        help="dosarul folosit de scenele de detaliu, ca sa se poata relua "
+        "coada fara sa se refaca uploadurile",
+    )
     args = parser.parse_args()
 
     audio = json.loads(Path("demo/audio/manifest.json").read_text(encoding="utf-8"))
@@ -159,7 +203,15 @@ def main() -> int:
     from playwright.sync_api import sync_playwright
 
     state: dict[str, Any] = {}
-    entries = []
+    if args.audit_id:
+        state["last_audit"] = args.audit_id
+    # Manifestul se completeaza, nu se rescrie: o reluare partiala trebuie sa
+    # pastreze scenele deja filmate.
+    entries = (
+        json.loads(MANIFEST.read_text(encoding="utf-8"))["scenes"]
+        if MANIFEST.exists()
+        else []
+    )
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         for scene in STORYBOARD:
@@ -174,6 +226,7 @@ def main() -> int:
             if scene.action == "upload":
                 state["current"] = state.get(scene.sample)
             actual = time.time() - began
+            entries = [item for item in entries if item["key"] != scene.key]
             entries.append(
                 {
                     "key": scene.key,
