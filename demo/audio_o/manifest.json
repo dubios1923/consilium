@@ -1,0 +1,111 @@
+{
+  "voice": "en-US-Studio-O",
+  "rate": 1.0,
+  "total_seconds": 241.35,
+  "scenes": [
+    {
+      "index": 0,
+      "key": "problem",
+      "action": "card",
+      "audio": "demo/audio_o/00_problem.wav",
+      "seconds": 18.775,
+      "min_seconds": 0.0
+    },
+    {
+      "index": 1,
+      "key": "thesis",
+      "action": "card",
+      "audio": "demo/audio_o/01_thesis.wav",
+      "seconds": 15.175,
+      "min_seconds": 0.0
+    },
+    {
+      "index": 2,
+      "key": "gate_upload",
+      "action": "upload",
+      "audio": "demo/audio_o/02_gate_upload.wav",
+      "seconds": 6.425,
+      "min_seconds": 4.0
+    },
+    {
+      "index": 3,
+      "key": "gate_result",
+      "action": "wait_state",
+      "audio": "demo/audio_o/03_gate_result.wav",
+      "seconds": 14.35,
+      "min_seconds": 6.0
+    },
+    {
+      "index": 4,
+      "key": "real_upload",
+      "action": "upload",
+      "audio": "demo/audio_o/04_real_upload.wav",
+      "seconds": 2.425,
+      "min_seconds": 3.0
+    },
+    {
+      "index": 5,
+      "key": "pipeline",
+      "action": "wait_state",
+      "audio": "demo/audio_o/05_pipeline.wav",
+      "seconds": 18.8,
+      "min_seconds": 8.0
+    },
+    {
+      "index": 6,
+      "key": "findings",
+      "action": "detail",
+      "audio": "demo/audio_o/06_findings.wav",
+      "seconds": 22.15,
+      "min_seconds": 10.0
+    },
+    {
+      "index": 7,
+      "key": "coverage",
+      "action": "detail",
+      "audio": "demo/audio_o/07_coverage.wav",
+      "seconds": 16.55,
+      "min_seconds": 9.0
+    },
+    {
+      "index": 8,
+      "key": "letter",
+      "action": "letter",
+      "audio": "demo/audio_o/08_letter.wav",
+      "seconds": 25.6,
+      "min_seconds": 12.0
+    },
+    {
+      "index": 9,
+      "key": "finding_r0",
+      "action": "card",
+      "audio": "demo/audio_o/09_finding_r0.wav",
+      "seconds": 30.975,
+      "min_seconds": 14.0
+    },
+    {
+      "index": 10,
+      "key": "finding_baseline",
+      "action": "card",
+      "audio": "demo/audio_o/10_finding_baseline.wav",
+      "seconds": 26.0,
+      "min_seconds": 16.0
+    },
+    {
+      "index": 11,
+      "key": "architecture",
+      "action": "card",
+      "audio": "demo/audio_o/11_architecture.wav",
+      "seconds": 22.325,
+      "min_seconds": 12.0
+    },
+    {
+      "index": 12,
+      "key": "close",
+      "action": "card",
+      "audio": "demo/audio_o/12_close.wav",
+      "seconds": 21.8,
+      "min_seconds": 12.0
+    }
+  ]
+}

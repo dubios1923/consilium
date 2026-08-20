@@ -39,11 +39,13 @@ def run(command: list[str]) -> None:
     subprocess.run(command, check=True, capture_output=True)
 
 
-def fit_scene(source: Path, target_seconds: float, index: int, key: str) -> Path:
+def fit_scene(
+    source: Path, target_seconds: float, index: int, key: str, work: Path
+) -> Path:
     """Aduce o scenă exact la durata replicii ei."""
     actual = probe_duration(source)
     factor = actual / target_seconds
-    out = WORK / f"{index:02d}_{key}.mp4"
+    out = work / f"{index:02d}_{key}.mp4"
 
     filters = [f"setpts=PTS/{factor:.6f}", f"fps={FPS}"]
     if factor >= SPEED_BADGE_THRESHOLD and Path(FONT).exists():
@@ -66,15 +68,17 @@ def fit_scene(source: Path, target_seconds: float, index: int, key: str) -> Path
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default=str(OUTPUT))
+    parser.add_argument("--audio", default=str(AUDIO_MANIFEST))
     args = parser.parse_args()
 
-    audio = json.loads(AUDIO_MANIFEST.read_text(encoding="utf-8"))
+    audio = json.loads(Path(args.audio).read_text(encoding="utf-8"))
     video = json.loads(VIDEO_MANIFEST.read_text(encoding="utf-8"))
     recorded = {entry["key"]: entry for entry in video["scenes"]}
 
-    if WORK.exists():
-        shutil.rmtree(WORK)
-    WORK.mkdir(parents=True)
+    work = WORK / Path(args.out).stem
+    if work.exists():
+        shutil.rmtree(work)
+    work.mkdir(parents=True)
 
     pieces, tracks, total = [], [], 0.0
     for entry in audio["scenes"]:
@@ -85,7 +89,7 @@ def main() -> int:
         source = Path(recorded[key]["video"])
         target = max(entry["seconds"], entry["min_seconds"])
         actual = probe_duration(source)
-        piece = fit_scene(source, target, entry["index"], key)
+        piece = fit_scene(source, target, entry["index"], key, work)
         pieces.append(piece)
         tracks.append(Path(entry["audio"]))
         total += target
@@ -96,19 +100,19 @@ def main() -> int:
         print("nicio scenă de montat")
         return 1
 
-    listing = WORK / "pieces.txt"
+    listing = work / "pieces.txt"
     listing.write_text(
         "".join(f"file '{piece.resolve()}'\n" for piece in pieces), encoding="utf-8"
     )
-    silent = WORK / "silent.mp4"
+    silent = work / "silent.mp4"
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
          "-i", str(listing), "-c", "copy", str(silent)])
 
-    audio_listing = WORK / "tracks.txt"
+    audio_listing = work / "tracks.txt"
     audio_listing.write_text(
         "".join(f"file '{track.resolve()}'\n" for track in tracks), encoding="utf-8"
     )
-    narration = WORK / "narration.wav"
+    narration = work / "narration.wav"
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
          "-i", str(audio_listing), "-c", "copy", str(narration)])
 

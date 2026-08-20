@@ -185,8 +185,7 @@ STORYBOARD: list[Scene] = [
         card_lines=[
             "Same model, same PDFs, one call, the prompt a person would type.",
             "Identifies well: 2.8 of 3, and 3.4 of 4.",
-            "Quantifies badly: 0.2 of 4. It reports the printed penalty,",
-            "almost never the excess over the legal cap.",
+            "Quantifies badly: 0.2 of 4.",
             "On a correct document it invented 2.4 findings per run.",
             "It misread 347,4 as 347,2, did correct arithmetic on its own",
             "wrong input, and accused the association.",
@@ -194,13 +193,11 @@ STORYBOARD: list[Scene] = [
         narration=(
             "Second: we measured the obvious objection. Same model, same PDFs, one "
             "call, the prompt a person would actually type. It finds things well. "
-            "It quantifies badly: zero point two out of four, because it reports "
-            "the penalty printed in the document, almost never the excess over the "
-            "legal cap, which is the number you need to file anything. And on a "
-            "correct document it invented findings in every run. In one, it "
-            "misread a digit, did perfectly correct arithmetic on its own wrong "
-            "input, and accused the association of understating a meter reading. "
-            "That is the failure the integrity check exists for."
+            "It quantifies badly: zero point two out of four. And on a correct "
+            "document it invented findings in every run. In one, it misread a "
+            "digit, did perfectly correct arithmetic on its own wrong input, and "
+            "accused the association. That is the failure the integrity check "
+            "exists for."
         ),
         min_seconds=16.0,
     ),

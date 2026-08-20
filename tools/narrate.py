@@ -88,17 +88,24 @@ def main() -> int:
     parser.add_argument("--lead", type=float, default=0.35)
     parser.add_argument("--tail", type=float, default=0.55)
     parser.add_argument("--list-voices", action="store_true")
+    parser.add_argument(
+        "--out-dir",
+        default=str(OUT_DIR),
+        help="unde se scriu fisierele audio si manifestul",
+    )
     args = parser.parse_args()
 
     if args.list_voices:
         list_voices(args.language)
         return 0
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(args.out_dir)
+    manifest = out_dir / "manifest.json"
+    out_dir.mkdir(parents=True, exist_ok=True)
     entries = []
     total = 0.0
     for index, scene in enumerate(STORYBOARD):
-        path = OUT_DIR / f"{index:02d}_{scene.key}.wav"
+        path = out_dir / f"{index:02d}_{scene.key}.wav"
         path.write_bytes(
             synthesize(scene.narration, args.voice, args.language, args.rate)
         )
@@ -117,7 +124,7 @@ def main() -> int:
         )
         print(f"  {scene.key:18s} {seconds:6.2f}s")
 
-    MANIFEST.write_text(
+    manifest.write_text(
         json.dumps(
             {"voice": args.voice, "rate": args.rate, "total_seconds": round(total, 2),
              "scenes": entries},
@@ -128,7 +135,7 @@ def main() -> int:
     )
     minutes, seconds = divmod(total, 60)
     print(f"\ntotal narațiune: {int(minutes)}:{seconds:04.1f}")
-    print(f"scris {MANIFEST}")
+    print(f"scris {manifest}")
     return 0
 
 
