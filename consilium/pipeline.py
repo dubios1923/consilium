@@ -40,7 +40,15 @@ from consilium.integrity import (
 from consilium.reconciler import audit as run_audit_rules
 from consilium.schema import PaymentList
 from consilium.state import AuditStore
+from consilium.triage import triage as run_triage
 
+# `SequentialAgent` nu se oprește la `ctx.end_invocation`: verifică doar
+# `should_pause_invocation`. Ca să oprim lanțul — fie pentru că documentul a fost
+# respins, fie pentru că o etapă a eșuat — punem un steag în starea sesiunii, pe
+# care fiecare etapă îl verifică înainte să pornească.
+STOP_FLAG = "pipeline_stopped"
+
+STEP_TRIAGE = "triage"
 STEP_EXTRACT = "extract"
 STEP_VERIFY = "verify"
 STEP_RECONCILE = "reconcile"
@@ -140,9 +148,18 @@ class _Stage(BaseAgent):
             actions=EventActions(state_delta=state or {}),
         )
 
+    def _stop(self, ctx: InvocationContext) -> None:
+        """Oprește etapele următoare. Mutăm direct starea sesiunii, ca steagul să
+        fie vizibil imediat, nu după ce runner-ul procesează evenimentul."""
+        ctx.session.state[STOP_FLAG] = True
+        ctx.end_invocation = True
+
     async def _run_async_impl(
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
+        if ctx.session.state.get(STOP_FLAG):
+            return
+
         audit_id = ctx.session.state["audit_id"]
         store = self.pipeline.store
         store.set_status(audit_id, self.status)  # type: ignore[arg-type]
@@ -150,16 +167,71 @@ class _Stage(BaseAgent):
         try:
             summary, delta = self.execute(ctx)
         except Exception as error:  # noqa: BLE001 - eșecul trebuie persistat
-            store.fail_step(audit_id, self.step, started, f"{type(error).__name__}: {error}")
-            yield self._note(f"{self.step}: eșec — {error}")
-            ctx.end_invocation = True
+            store.fail_step(
+                audit_id, self.step, started, f"{type(error).__name__}: {error}"
+            )
+            self._stop(ctx)
+            yield self._note(f"{self.step}: eșec — {error}", {STOP_FLAG: True})
             return
+
         store.finish_step(audit_id, self.step, started, output=delta.get("_log"))
         delta.pop("_log", None)
+        if delta.pop("_stop", False):
+            # Oprire curată, nu eșec: documentul a fost rutat corect în afară.
+            self._stop(ctx)
+            delta[STOP_FLAG] = True
         yield self._note(summary, delta)
 
     def execute(self, ctx: InvocationContext) -> tuple[str, dict[str, Any]]:
         raise NotImplementedError
+
+
+class TriageAgent(_Stage):
+    """Gate de intrare. Oprește documentele care nu sunt liste de plată.
+
+    Eșuează deschis: dacă triajul nu poate decide, pipeline-ul continuă. Un gate
+    de optimizare nu are dreptul să blocheze un audit valid.
+    """
+
+    def execute(self, ctx: InvocationContext) -> tuple[str, dict[str, Any]]:
+        state = ctx.session.state
+        audit_id = state["audit_id"]
+        outcome = run_triage(
+            state["pdf_path"], self.pipeline.config, self.pipeline.client
+        )
+        self.pipeline.store.set_triage(audit_id, outcome.to_dict())
+
+        if outcome.should_continue:
+            summary = (
+                f"Triaj: {outcome.status}"
+                + (f" ({outcome.document_type})" if outcome.document_type else "")
+                + (f" — {outcome.reason}" if outcome.reason else "")
+            )
+            return summary, {
+                "triage_status": outcome.status,
+                "_log": {
+                    "status": outcome.status,
+                    "document_type": outcome.document_type,
+                    "confidence": outcome.confidence,
+                    "error": outcome.error,
+                },
+            }
+
+        self.pipeline.store.set_status(audit_id, "rejected")
+        summary = (
+            f"Document respins: {outcome.document_type or 'tip necunoscut'} — "
+            f"{outcome.reason}"
+        )
+        return summary, {
+            "triage_status": outcome.status,
+            "_stop": True,
+            "_log": {
+                "status": outcome.status,
+                "document_type": outcome.document_type,
+                "confidence": outcome.confidence,
+                "reason": outcome.reason,
+            },
+        }
 
 
 class ExtractorAgent(_Stage):
@@ -402,6 +474,13 @@ def build_pipeline(pipeline: PipelineContext) -> SequentialAgent:
             "reconciliere determinist și redactarea cererii de documente."
         ),
         sub_agents=[
+            TriageAgent(
+                name="triage",
+                description="Decide dacă documentul merită pipeline-ul complet.",
+                pipeline=pipeline,
+                step=STEP_TRIAGE,
+                status="triaging",
+            ),
             ExtractorAgent(
                 name="extractor",
                 description="Transcrie PDF-ul în structura validată.",
@@ -482,6 +561,6 @@ async def run_audit(
         pass
 
     final = pipeline.store.get(audit_id)
-    if final and final.status != "failed":
+    if final and final.status not in ("failed", "rejected"):
         pipeline.store.set_status(audit_id, "done")
     return audit_id

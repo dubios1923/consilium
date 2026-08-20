@@ -21,6 +21,8 @@ COLLECTION = "audits"
 
 AuditStatus = Literal[
     "queued",
+    "triaging",
+    "rejected",
     "extracting",
     "verifying",
     "reconciling",
@@ -32,6 +34,7 @@ AuditStatus = Literal[
 
 STATUS_ORDER: tuple[AuditStatus, ...] = (
     "queued",
+    "triaging",
     "extracting",
     "verifying",
     "reconciling",
@@ -89,6 +92,7 @@ class AuditRecord:
     findings: list[dict[str, Any]] = field(default_factory=list)
     coverage_report: dict[str, Any] | None = None
     artifact_uris: list[str] = field(default_factory=list)
+    triage: dict[str, Any] | None = None
     delivery: dict[str, Any] | None = None
     error: str | None = None
 
@@ -232,6 +236,14 @@ class AuditStore(ABC):
         record = self._load(audit_id)
         record.findings = findings
         record.coverage_report = coverage_report
+        record.updated_at = time.time()
+        self.put(record)
+        return record
+
+    def set_triage(self, audit_id: str, triage: dict[str, Any]) -> AuditRecord:
+        """Consemneaza decizia gate-ului de intrare."""
+        record = self._load(audit_id)
+        record.triage = triage
         record.updated_at = time.time()
         self.put(record)
         return record

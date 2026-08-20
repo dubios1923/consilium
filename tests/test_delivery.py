@@ -298,11 +298,35 @@ def test_no_api_keys_committed(path):
         assert not pattern.search(content), f"posibil secret în {path}"
 
 
+# Numele de chei care nu au ce căuta într-un fișier versionat. Potrivirea e pe
+# cheie întreagă, în poziție de cheie YAML: `max_output_tokens` e un prag
+# legitim, nu o credențială, iar un test care îl respinge doar învață pe cineva
+# să adauge o excepție.
+CREDENTIAL_KEY = re.compile(
+    r"^\s*(api_key|apikey|secret|password|passwd|token|access_token"
+    r"|private_key|credentials)\s*:",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
 def test_config_yaml_has_no_delivery_credentials():
     content = Path("config.yaml").read_text(encoding="utf-8")
-    lowered = content.lower()
-    for forbidden in ("api_key", "apikey", "password", "secret", "token"):
-        assert forbidden not in lowered, f"`{forbidden}` nu are ce căuta în config"
+    found = CREDENTIAL_KEY.findall(content)
+    assert not found, f"chei de credențiale în config.yaml: {found}"
+
+
+@pytest.mark.parametrize(
+    "line", ["api_key: re_abc", "  token: x", "PASSWORD: y", "private_key: z"]
+)
+def test_credential_key_detector_is_not_vacuous(line):
+    assert CREDENTIAL_KEY.search(line)
+
+
+@pytest.mark.parametrize(
+    "line", ["max_output_tokens: 400", "  response_days: 10", "dpi: 110"]
+)
+def test_credential_key_detector_allows_ordinary_settings(line):
+    assert not CREDENTIAL_KEY.search(line)
 
 
 def test_provider_native_key_name_is_accepted():
