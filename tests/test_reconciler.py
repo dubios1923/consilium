@@ -233,7 +233,7 @@ def test_r4_catches_penalty_above_the_legal_cap(config):
     assert len(findings) == 1
     assert findings[0].expected_value == pytest.approx(60.0)
     assert findings[0].amount_involved == pytest.approx(90.0)
-    assert "0.50%/zi" in findings[0].message
+    assert "0,50%/zi" in findings[0].message
 
 
 def test_r4_catches_penalty_charged_without_any_arrears(config):

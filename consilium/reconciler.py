@@ -42,6 +42,26 @@ def _round(value: float) -> float:
     return round(value + 0.0, 2)
 
 
+def lei(value: float, signed: bool = False) -> str:
+    """O suma in format romanesc: 1.234,56
+
+    Constatarile ajung intr-o scrisoare romaneasca si pe o pagina romaneasca.
+    Un `27689.95 lei` langa un `3.343,87 lei` in acelasi paragraf arata ca o
+    scapare, pentru ca este. Formatarea sta aici, nu in drafter, fiindca drafter
+    importa reconciler si invers ar fi ciclic.
+    """
+    text = f"{abs(value):,.2f}".replace(",", "\x00").replace(".", ",")
+    text = text.replace("\x00", ".")
+    if signed:
+        return f"{'-' if value < 0 else '+'}{text}"
+    return text
+
+
+def percent(value: float, decimals: int = 2) -> str:
+    """Un procent in format romanesc: 0,20 sau 99,20"""
+    return f"{value:.{decimals}f}".replace(".", ",")
+
+
 def _normalize(text: str) -> str:
     decomposed = unicodedata.normalize("NFKD", text)
     stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
@@ -216,9 +236,9 @@ def rule_r1(payment: PaymentList, config: Config) -> list[Finding]:
             found_value=declared,
             amount_involved=abs(delta),
             message=(
-                f"Totalul general declarat ({declared:.2f} lei) nu corespunde "
+                f"Totalul general declarat ({lei(declared)} lei) nu corespunde "
                 f"sumei celor {len(payment.expense_lines)} poziții de cheltuială "
-                f"({computed:.2f} lei); diferență {-delta:+.2f} lei."
+                f"({lei(computed)} lei); diferență {lei(-delta, signed=True)} lei."
             ),
         )
     ]
@@ -262,8 +282,8 @@ def rule_r2(
             amount_involved=None,
             legal_reference=config.require("reconciler.legal_references.R2"),
             message=(
-                f"Suma cotelor indivize este {computed:.2f}%, nu {target:.2f}%: "
-                f"{abs(delta):.2f} puncte procentuale {direction}. "
+                f"Suma cotelor indivize este {percent(computed)}%, nu {percent(target)}%: "
+                f"{percent(abs(delta))} puncte procentuale {direction}. "
                 f"Cheltuielile repartizate pe cotă se împart astfel pe o bază "
                 f"greșită."
             ),
@@ -364,9 +384,9 @@ def rule_r3(
                         f"„{expense.distribution_key}”, dar {len(outliers)} din "
                         f"{len(apartments)} apartamente primesc altă sumă decât "
                         f"cea corespunzătoare cheii. Cea mai mare abatere: "
-                        f"apartamentul {worst[0]}, {worst[1]:+.2f} lei față de "
-                        f"{worst[2]:.2f} lei. Total redistribuit greșit: "
-                        f"{moved:.2f} lei."
+                        f"apartamentul {worst[0]}, {lei(worst[1], signed=True)} lei față de "
+                        f"{lei(worst[2])} lei. Total redistribuit greșit: "
+                        f"{lei(moved)} lei."
                     ),
                 )
             )
@@ -384,7 +404,7 @@ def rule_r3(
                     legal_reference=legal,
                     message=(
                         f"„{expense.category}”: suma deviațiilor pe toate cele "
-                        f"{len(apartments)} apartamente este {drift:+.2f} lei, nu "
+                        f"{len(apartments)} apartamente este {lei(drift, signed=True)} lei, nu "
                         f"zero. Rotunjirea se compensează; o abatere agregată "
                         f"într-o singură direcție înseamnă că suma repartizată "
                         f"diferă de suma declarată."
@@ -439,7 +459,7 @@ def rule_r4(
             line.penalties / (line.arrears * days) if line.arrears > 0 else float("inf")
         )
         applied_text = (
-            f"{applied * 100:.2f}%/zi" if line.arrears > 0 else "fără restanță"
+            f"{percent(applied * 100)}%/zi" if line.arrears > 0 else "fără restanță"
         )
         findings.append(
             Finding(
@@ -453,11 +473,11 @@ def rule_r4(
                 legal_reference=legal,
                 message=(
                     f"Apartamentul {line.apartment_no}: penalizare de "
-                    f"{line.penalties:.2f} lei la o restanță de "
-                    f"{line.arrears:.2f} lei, adică {applied_text}. Plafonul "
-                    f"legal pentru {days} de zile este {cap:.2f} lei "
-                    f"({rate * 100:.1f}%/zi). Suma percepută în plus: "
-                    f"{excess:.2f} lei."
+                    f"{lei(line.penalties)} lei la o restanță de "
+                    f"{lei(line.arrears)} lei, adică {applied_text}. Plafonul "
+                    f"legal pentru {days} de zile este {lei(cap)} lei "
+                    f"({percent(rate * 100, 1)}%/zi). Suma percepută în plus: "
+                    f"{lei(excess)} lei."
                 ),
             )
         )
@@ -536,9 +556,9 @@ def rule_r5(
             amount_involved=abs(delta),
             message=(
                 f"Cheltuiala lunii curente repartizată pe cele {total} de "
-                f"apartamente însumează {current:.2f} lei, față de totalul "
-                f"general declarat de {declared:.2f} lei; diferență "
-                f"{delta:+.2f} lei."
+                f"apartamente însumează {lei(current)} lei, față de totalul "
+                f"general declarat de {lei(declared)} lei; diferență "
+                f"{lei(delta, signed=True)} lei."
             ),
         )
     ], coverage
