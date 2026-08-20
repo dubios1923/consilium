@@ -69,12 +69,19 @@ def seed_done(store: InMemoryAuditStore) -> str:
 # --------------------------------------------------------------------------
 
 
-def test_no_mutating_routes_exist():
-    """Un refresh într-un demo nu are voie să pornească o procesare."""
-    methods = set()
+def test_no_route_can_modify_an_existing_audit():
+    """Un refresh nu are voie sa reporneasca o procesare, oricate ori s-ar da.
+
+    Incarcarea unui document nou nu incalca asta: scrie un fisier in bucket, ca
+    `gcloud storage cp`, si nu atinge niciun dosar existent.
+    """
     for route in dashboard.app.routes:
-        methods |= set(getattr(route, "methods", set()) or set())
-    assert methods <= {"GET", "HEAD"}, f"rute care pot modifica: {methods}"
+        methods = set(getattr(route, "methods", set()) or set())
+        path = getattr(route, "path", "")
+        if methods <= {"GET", "HEAD"}:
+            continue
+        assert path == "/upload", f"ruta care poate modifica: {methods} {path}"
+        assert "audit" not in path
 
 
 def test_health_endpoint(client):
@@ -205,3 +212,102 @@ def test_letter_route_404s_without_a_pdf(client, store):
 )
 def test_money_formatting(value, expected):
     assert dashboard.money(value) == expected
+
+
+# --------------------------------------------------------------------------
+# Încărcarea
+# --------------------------------------------------------------------------
+
+
+def upload(client: TestClient, name: str, payload: bytes):
+    return client.post(
+        "/upload",
+        files={"document": (name, payload, "application/pdf")},
+        follow_redirects=False,
+    )
+
+
+def notice_of(response) -> str:
+    """Mesajul din redirect, decodat: FastAPI il trimite percent-encoded."""
+    from urllib.parse import unquote_plus
+
+    return unquote_plus(response.headers["location"])
+
+
+def test_upload_form_is_on_the_page(client):
+    body = client.get("/").text
+    assert 'action="/upload"' in body
+    assert "Încarcă o listă de plată" in body
+
+
+def test_non_pdf_is_refused(client):
+    response = upload(client, "note.txt", b"nu e pdf")
+    assert response.status_code == 303
+    assert "PDF" in notice_of(response)
+
+
+def test_file_that_only_claims_to_be_pdf_is_refused(client, monkeypatch):
+    """Extensia nu e o dovada; verificam antetul fisierului."""
+    response = upload(client, "fals.pdf", b"GIF89a not really")
+    assert response.status_code == 303
+    assert "valid" in notice_of(response)
+
+
+def test_oversized_file_is_refused(client):
+    big = b"%PDF-1.4" + b"0" * (dashboard.MAX_UPLOAD_BYTES + 1)
+    response = upload(client, "mare.pdf", big)
+    assert "prea mare" in notice_of(response)
+
+
+def test_daily_limit_stops_further_uploads(client, store, monkeypatch):
+    monkeypatch.setattr(dashboard, "DAILY_UPLOAD_LIMIT", 1)
+    store.open_audit("gs://intake/liste/deja.pdf")
+    response = upload(client, "listă.pdf", b"%PDF-1.4 continut")
+    assert "Plafonul" in notice_of(response)
+
+
+def test_accepted_upload_writes_to_the_bucket(client, monkeypatch):
+    written = {}
+
+    class FakeBlob:
+        def upload_from_string(self, payload, content_type):
+            written["payload"] = payload
+            written["type"] = content_type
+
+    class FakeBucket:
+        def blob(self, path):
+            written["path"] = path
+            return FakeBlob()
+
+    class FakeClient:
+        def bucket(self, name):
+            written["bucket"] = name
+            return FakeBucket()
+
+    import google.cloud.storage as storage_module
+
+    monkeypatch.setattr(storage_module, "Client", lambda *a, **k: FakeClient())
+    response = upload(client, "zefir 12.pdf", b"%PDF-1.4 continut")
+    assert response.status_code == 303
+    assert "încărcat" in notice_of(response)
+    assert written["bucket"] == dashboard.BUCKET
+    assert written["path"].startswith("liste/")
+    assert written["path"].endswith("zefir_12.pdf")
+    assert written["type"] == "application/pdf"
+
+
+@pytest.mark.parametrize(
+    ("raw", "ends_with"),
+    [
+        ("listă de plată.pdf", "listă_de_plată.pdf"),
+        ("../../etc/passwd", "passwd.pdf"),
+        ("", "document.pdf"),
+    ],
+)
+def test_names_are_sanitised(raw, ends_with):
+    assert dashboard.safe_name(raw).endswith(ends_with)
+
+
+def test_names_are_unique_per_upload():
+    first = dashboard.safe_name("x.pdf")
+    assert first.split("_", 1)[0].isdigit()

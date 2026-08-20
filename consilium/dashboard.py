@@ -1,9 +1,12 @@
 """Pagina de inspecție a auditurilor. Read-only, ca și agentul ADK.
 
-Nu declanșează nimic și nu modifică nimic: citește din Firestore și servește
-scrisoarea din GCS. Un audit se pornește punând un PDF în bucket, nu apăsând un
-buton. Dacă pagina ar putea executa, un refresh într-un demo ar porni procesări
-în paralel pe același document.
+Nu modifică niciun audit existent: citește din Firestore și servește scrisoarea
+din GCS. Un refresh nu poate reporni o procesare, oricâte ori s-ar da.
+
+Singura acțiune posibilă este încărcarea unui document nou, care scrie fișierul
+în bucket exact ca `gcloud storage cp` și lasă Eventarc să facă restul. Fără ea,
+sistemul e utilizabil doar de cineva care are gcloud instalat și drepturi pe
+proiect, ceea ce exclude tocmai proprietarul de apartament pentru care e scris.
 
 Lista se reîmprospătează singură cât timp există audituri în lucru, ca să se
 poată urmări pipeline-ul trecând prin etape.
@@ -13,11 +16,13 @@ from __future__ import annotations
 
 import html
 import os
+import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, Response
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from consilium.state import AuditRecord, FirestoreAuditStore
 
@@ -38,6 +43,17 @@ STATUS_LABELS = {
 
 RUNNING = {"queued", "triaging", "extracting", "verifying", "reconciling",
            "drafting", "delivering"}
+
+BUCKET = os.environ.get("CONSILIUM_INTAKE_BUCKET", "consilium-intake-ab7x21")
+INTAKE_PREFIX = "liste/"
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+# Pagina e publica, iar fiecare document costa apeluri de model. Plafonul zilnic
+# nu apara de un atacator hotarat, dar opreste o factura accidentala.
+DAILY_UPLOAD_LIMIT = int(os.environ.get("CONSILIUM_DAILY_UPLOAD_LIMIT", "40"))
+
+# FastAPI cere descriptorul ca valoare implicita; il tinem separat ca sa nu
+# apelam File() in semnatura.
+UPLOAD_FIELD = File(...)
 
 STEP_LABELS = {
     "triage": "Triaj",
@@ -134,6 +150,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
          background: var(--card); border: 1px dashed var(--line); border-radius: 10px; }
 .back { font-size: 13px; }
 code { background: var(--band); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+.drop { background: var(--card); border: 1px dashed var(--line); border-radius: 10px;
+        padding: 18px 20px; }
+.drop input[type=file] { color: var(--muted); font-size: 13.5px; }
+.drop .chosen { color: var(--ink); font-size: 13.5px; margin: 8px 0 2px; }
+.drop button { margin-top: 10px; background: var(--accent); color: #fff; border: 0;
+               border-radius: 7px; padding: 9px 18px; font-size: 13.5px;
+               font-weight: 600; cursor: pointer; }
+.drop button:disabled { background: var(--band); color: var(--muted); cursor: default; }
+.hint { color: var(--muted); font-size: 12.5px; margin-top: 9px; max-width: 62ch; }
 ul.docs { margin: 0; padding-left: 20px; font-size: 13.5px; }
 ul.docs li { margin-bottom: 6px; }
 @media (prefers-color-scheme: dark) {
@@ -170,7 +195,7 @@ def healthz() -> dict[str, str]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def index() -> HTMLResponse:
+def index(notice: str = "") -> HTMLResponse:
     try:
         records = store().list_recent(limit=50)
     except Exception as error:  # noqa: BLE001 - pagina nu are voie sa cada
@@ -222,6 +247,18 @@ def index() -> HTMLResponse:
   <div class="stat"><div class="n">{money(involved)}</div><div class="l">sume implicate</div></div>
   <div class="stat"><div class="n">{rejected}</div><div class="l">respinse la triaj</div></div>
 </div>
+<h2>Încarcă o listă de plată</h2>
+<form class="drop" method="post" action="/upload" enctype="multipart/form-data">
+  <input type="file" name="document" accept="application/pdf,.pdf" required
+         onchange="this.form.querySelector('button').disabled=false;
+                   this.form.querySelector('.chosen').textContent=this.files[0].name">
+  <div class="chosen"></div>
+  <button type="submit" disabled>Pornește auditul</button>
+  <div class="hint">Doar PDF, cel mult 12 MB. Documentul ajunge în bucket și
+  pipeline-ul pornește singur. Un document care nu e listă de plată e respins la
+  triaj în câteva secunde.</div>
+</form>
+{f'<div class="hint" style="margin-top:10px">{e(notice)}</div>' if notice else ''}
 <h2>Dosare</h2>{table}"""
     return page("Consilium: audituri", body, refresh=running)
 
@@ -417,4 +454,72 @@ def letter(audit_id: str) -> Response:
         headers={
             "Content-Disposition": f'inline; filename="{blob_path.rsplit("/", 1)[-1]}"'
         },
+    )
+
+
+def safe_name(raw: str) -> str:
+    """Nume de obiect previzibil, derivat din ce a încărcat utilizatorul."""
+    stem = Path(raw or "document.pdf").name
+    cleaned = "".join(
+        ch if ch.isalnum() or ch in "._-" else "_" for ch in stem
+    ).strip("._")
+    if not cleaned.lower().endswith(".pdf"):
+        cleaned += ".pdf"
+    return f"{int(time.time())}_{cleaned[:80]}"
+
+
+def uploads_today(records: list[AuditRecord]) -> int:
+    cutoff = time.time() - 24 * 3600
+    return sum(1 for record in records if record.created_at >= cutoff)
+
+
+@app.post("/upload")
+async def upload(document: UploadFile = UPLOAD_FIELD) -> Response:
+    """Pune documentul în bucket. Restul se întâmplă prin Eventarc, ca de obicei.
+
+    Nu atinge niciun audit existent și nu vorbește cu pipeline-ul: scrie un
+    fișier, exact ce ar face `gcloud storage cp`.
+    """
+    name = (document.filename or "").lower()
+    if not name.endswith(".pdf"):
+        return RedirectResponse("/?notice=Doar+fișiere+PDF.", status_code=303)
+
+    payload = await document.read()
+    if not payload.startswith(b"%PDF"):
+        return RedirectResponse(
+            "/?notice=Fișierul+nu+pare+a+fi+un+PDF+valid.", status_code=303
+        )
+    if len(payload) > MAX_UPLOAD_BYTES:
+        return RedirectResponse(
+            f"/?notice=Fișier+prea+mare+({len(payload) // 1024 // 1024}+MB,+"
+            f"maxim+{MAX_UPLOAD_BYTES // 1024 // 1024}+MB).",
+            status_code=303,
+        )
+
+    try:
+        recent = store().list_recent(limit=DAILY_UPLOAD_LIMIT + 5)
+    except Exception:  # noqa: BLE001 - un Firestore cazut nu blocheaza incarcarea
+        recent = []
+    if uploads_today(recent) >= DAILY_UPLOAD_LIMIT:
+        return RedirectResponse(
+            "/?notice=Plafonul+zilnic+de+documente+a+fost+atins.+"
+            "Încearcă+mâine.",
+            status_code=303,
+        )
+
+    try:
+        from google.cloud import storage
+
+        blob = storage.Client().bucket(BUCKET).blob(
+            f"{INTAKE_PREFIX}{safe_name(document.filename or '')}"
+        )
+        blob.upload_from_string(payload, content_type="application/pdf")
+    except Exception as error:  # noqa: BLE001
+        return RedirectResponse(
+            f"/?notice=Încărcare+eșuată:+{e(error)[:120]}", status_code=303
+        )
+
+    return RedirectResponse(
+        "/?notice=Document+încărcat.+Auditul+pornește+în+câteva+secunde.",
+        status_code=303,
     )
