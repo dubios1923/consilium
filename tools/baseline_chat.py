@@ -33,6 +33,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from consilium.drafter import format_money
 from consilium.extractor import MODEL, build_client
 
 SYNTHETIC = Path("samples/synthetic")
@@ -77,13 +78,69 @@ def amounts_in_document(path: Path) -> set[str]:
     return found
 
 
-def planted_rules(expected: dict, sample_pdf: str) -> list[str]:
+def planted_findings(expected: dict, sample_pdf: str) -> list[dict]:
     return [
-        finding["rule_id"]
+        finding
         for finding in expected["findings"]
         if finding["sample"] == sample_pdf
         and finding["type"] != "unverifiable_distribution"
     ]
+
+
+def identifies(finding: dict, answer: str) -> bool:
+    """A aratat raspunsul catre lucrul corect?
+
+    Nu cere cifra calculata, doar sa fi numit entitatea: apartamentul cu
+    penalizare abuziva, categoria repartizata gresit, sau totalul care nu se
+    inchide. Este pragul jos: „am observat ceva aici”.
+    """
+    lowered = answer.lower()
+    location = finding.get("location") or {}
+
+    apartment = location.get("apartment_no")
+    if apartment:
+        return bool(
+            re.search(rf"apartamentul\s+{apartment}\b", lowered)
+            or re.search(rf"\bap\.?\s*{apartment}\b", lowered)
+        ) and any(marker in lowered for marker in RULE_MARKERS[finding["rule_id"]])
+
+    category = location.get("column")
+    if category:
+        head = category.split()[0].lower()
+        return head in lowered and any(
+            marker in lowered for marker in RULE_MARKERS[finding["rule_id"]]
+        )
+
+    return any(marker in lowered for marker in RULE_MARKERS[finding["rule_id"]])
+
+
+def quantifies(finding: dict, answer: str) -> bool:
+    """A produs cifra pe care reconciler-ul o calculeaza?
+
+    Este pragul inalt: nu „penalizarea e de 96,00 lei” (scrie in document), ci
+    „57,60 lei peste plafon” (nu scrie nicaieri, trebuie calculat).
+    """
+    amount = finding.get("amount_involved")
+    if not isinstance(amount, (int, float)):
+        expected = finding.get("expected_value")
+        if not isinstance(expected, (int, float)):
+            return False
+        amount = expected
+    return format_money(float(amount)) in answer
+
+
+def grounding_document(pdf: Path) -> Path:
+    """PDF-ul fata de care verificam cifrele.
+
+    Un scan nu are strat de text, deci nicio cifra nu s-ar putea confirma din el
+    si toate ar aparea drept nefondate. Datele sunt aceleasi ca in documentul
+    nativ, deci verificam fata de acela.
+    """
+    if "_scanned" in pdf.stem:
+        native = pdf.with_name(pdf.stem.replace("_scanned", "") + ".pdf")
+        if native.is_file():
+            return native
+    return pdf
 
 
 def rules_claimed(answer: str) -> set[str]:
@@ -116,16 +173,29 @@ def run_once(client: Any, pdf: Path) -> str:
     return response.text or ""
 
 
-def evaluate(answer: str, pdf: Path, planted: list[str]) -> dict[str, Any]:
-    claimed = rules_claimed(answer)
-    expected = set(planted)
-    document_amounts = amounts_in_document(pdf)
+def evaluate(answer: str, pdf: Path, planted: list[dict]) -> dict[str, Any]:
+    identified, quantified, missed = [], [], []
+    for finding in planted:
+        label = finding["id"]
+        if quantifies(finding, answer):
+            quantified.append(label)
+            identified.append(label)
+        elif identifies(finding, answer):
+            identified.append(label)
+        else:
+            missed.append(label)
+
+    planted_rules = {finding["rule_id"] for finding in planted}
+    extra = sorted(rules_claimed(answer) - planted_rules)
+
+    document_amounts = amounts_in_document(grounding_document(pdf))
     quoted = [normalize(token) for token in MONEY.findall(answer)]
     ungrounded = [value for value in quoted if value not in document_amounts]
     return {
-        "found": sorted(expected & claimed),
-        "missed": sorted(expected - claimed),
-        "extra": sorted(claimed - expected),
+        "identified": identified,
+        "quantified": quantified,
+        "missed": missed,
+        "extra": extra,
         "amounts_quoted": len(quoted),
         "amounts_ungrounded": len(ungrounded),
         "ungrounded_sample": sorted(set(ungrounded))[:6],
@@ -133,29 +203,61 @@ def evaluate(answer: str, pdf: Path, planted: list[str]) -> dict[str, Any]:
     }
 
 
-def summarize(name: str, results: list[dict[str, Any]], planted: list[str]) -> None:
-    print(f"\n=== {name} · {len(results)} rulări · plantate: {planted or 'niciuna'} ===")
-    header = f"{'#':>2}  {'găsite':<14} {'ratate':<14} {'inventate':<12} {'cifre':>6} {'nefondate':>10}"
+def summarize(name: str, results: list[dict[str, Any]], planted: list[dict]) -> None:
+    ids = [finding["id"] for finding in planted]
+    print(f"\n=== {name} · {len(results)} rulări · plantate: {ids or 'niciuna'} ===")
+    header = (
+        f"{'#':>2}  {'identificate':<26} {'cuantificate':<26} "
+        f"{'inventate':<12} {'cifre':>6} {'nefondate':>10}"
+    )
     print(header)
     print("-" * len(header))
     for index, item in enumerate(results, start=1):
         print(
-            f"{index:>2}  {','.join(item['found']) or '-':<14} "
-            f"{','.join(item['missed']) or '-':<14} "
+            f"{index:>2}  {','.join(item['identified']) or '-':<26} "
+            f"{','.join(item['quantified']) or '-':<26} "
             f"{','.join(item['extra']) or '-':<12} "
             f"{item['amounts_quoted']:>6} {item['amounts_ungrounded']:>10}"
         )
-    recalls = [len(r["found"]) for r in results]
+    total = len(planted)
+    ident = [len(r["identified"]) for r in results]
+    quant = [len(r["quantified"]) for r in results]
     extras = [len(r["extra"]) for r in results]
     ungrounded = [r["amounts_ungrounded"] for r in results]
-    total = len(planted)
     print(
-        f"    recall mediu {statistics.mean(recalls):.1f}/{total}"
-        f"  ·  fals pozitive medii {statistics.mean(extras):.1f}"
-        f"  ·  cifre nefondate medii {statistics.mean(ungrounded):.1f}"
+        f"    identificate {statistics.mean(ident):.1f}/{total}"
+        f"  ·  cuantificate {statistics.mean(quant):.1f}/{total}"
+        f"  ·  fals pozitive {statistics.mean(extras):.1f}"
+        f"  ·  cifre nefondate {statistics.mean(ungrounded):.1f}"
     )
-    distinct = Counter(tuple(r["found"]) for r in results)
+    distinct = Counter(tuple(r["identified"]) for r in results)
     print(f"    seturi distincte de constatări între rulări: {len(distinct)}")
+
+
+def reevaluate(source: Path, out: str) -> int:
+    """Recalculeaza metricile pe raspunsurile salvate, fara sa reia apelurile."""
+    saved = json.loads(source.read_text(encoding="utf-8"))
+    expected = json.loads(
+        (SYNTHETIC / "expected_findings.json").read_text(encoding="utf-8")
+    )
+    for name, block in saved["runs"].items():
+        pdf = SYNTHETIC / f"{name}.pdf"
+        planted = planted_findings(
+            expected, f"{name.replace('_scanned', '').replace('_alt', '')}.pdf"
+        )
+        results = []
+        for item in block["results"]:
+            fresh = evaluate(item["answer"], pdf, planted)
+            fresh["answer"] = item["answer"]
+            results.append(fresh)
+        block["results"] = results
+        block["planted"] = [finding["id"] for finding in planted]
+        summarize(name, results, planted)
+    Path(out).write_text(
+        json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print(f"\nscris {out}")
+    return 0
 
 
 def main() -> int:
@@ -167,7 +269,14 @@ def main() -> int:
         default=["sample_errors", "sample_penalties", "sample_clean_scanned"],
     )
     parser.add_argument("--out", default="samples/baseline_chat.json")
+    parser.add_argument(
+        "--reeval",
+        help="re-evaluează răspunsurile dintr-un rezultat salvat, fără apeluri noi",
+    )
     args = parser.parse_args()
+
+    if args.reeval:
+        return reevaluate(Path(args.reeval), args.out)
 
     expected = json.loads(
         (SYNTHETIC / "expected_findings.json").read_text(encoding="utf-8")
@@ -181,7 +290,7 @@ def main() -> int:
             print(f"lipsește {pdf}", file=sys.stderr)
             continue
         source = f"{name.replace('_scanned', '').replace('_alt', '')}.pdf"
-        planted = planted_rules(expected, source)
+        planted = planted_findings(expected, source)
 
         results = []
         for index in range(args.runs):
@@ -195,7 +304,10 @@ def main() -> int:
             item["answer"] = answer
             results.append(item)
 
-        everything["runs"][name] = {"planted": planted, "results": results}
+        everything["runs"][name] = {
+            "planted": [finding["id"] for finding in planted],
+            "results": results,
+        }
         summarize(name, results, planted)
 
     Path(args.out).write_text(

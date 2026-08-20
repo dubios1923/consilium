@@ -239,6 +239,95 @@ violation-list loop cannot be expressed as a prompt. See section 4.2.
 
 ---
 
+## Why not just a chatbot?
+
+The obvious objection to all of this: drop the PDF into a chat window with a
+good model and ask it to find the errors. `tools/baseline_chat.py` does exactly
+that — same model as the extractor (`gemini-3.5-flash`), one call, default
+temperature, and the prompt a person would actually type:
+
+> *"Verifică această listă de plată, găsește erorile și redactează o cerere
+> formală către asociație."*
+
+Five runs per document, scored against the same `expected_findings.json` the
+pipeline is scored against. Two thresholds are measured separately, because
+they are not the same skill:
+
+- **identified** — the answer points at the right thing ("apartment 17's penalty
+  looks too high"). The low bar.
+- **quantified** — the answer produces the figure the reconciler computes
+  ("57,60 lei above the legal cap"). That number appears nowhere in the
+  document; it has to be derived.
+
+| document | identified | quantified | invented findings | ungrounded figures | distinct answers in 5 runs |
+|---|---|---|---|---|---|
+| `sample_errors` (3 planted) | **2.8 / 3** | 1.6 / 3 | 1.2 | 6.6 | 2 |
+| `sample_penalties` (4 planted) | **3.4 / 4** | **0.2 / 4** | 1.2 | 11.8 | 2 |
+| `sample_clean_scanned` (0 planted) | — | — | **2.4** | 3.6 | 1 |
+
+**Where the baseline does well, and it does:** it finds things. On
+`sample_penalties` it identified 3.4 of 4 planted findings on average, and four
+of five runs quoted all three abusive penalty amounts (`96,00`, `18,72`,
+`141,18`) correctly. On `sample_errors` it caught the inflated grand total in
+every single run. As a *reading* device pointed at a document, it is good.
+
+**Where it stops being an audit:**
+
+*It notices but does not compute.* On `sample_penalties` it quantified 0.2 of 4.
+It reports "the penalty is 96,00 lei" — a number printed in the document — but
+almost never produces "57,60 lei charged above the legal cap", which requires
+knowing the cap, applying it to the arrears, and subtracting. The owner needs
+the second number to file a contestation. The first one they could read
+themselves.
+
+*It invents findings on a correct document.* `sample_clean_scanned` has zero
+planted errors. Every run reported problems anyway — 2.4 rule categories per
+run, in confident, well-formatted Romanian.
+
+*And it cannot tell its own misreading from a defect in the document.* This is
+the one that matters. From run 3 on the clean scan, verbatim:
+
+```
+#### 1. Eroare de calcul la consumul de apă (Ap. 3)
+*   Index vechi:      347,2 mc
+*   Index nou:        353,0 mc
+*   Consum real:      353,0 - 347,2 = 5,8 mc
+*   Consum înregistrat în tabel: 5,6 mc (eroare de 0,2 mc în minus...)
+```
+
+The document says **347,4**, not 347,2. The model misread one digit off the
+scan, did correct arithmetic on its own wrong input, and concluded that the
+association had understated a meter reading. Everything downstream of that — the
+formal letter, the accusation, the requested correction — is built on a digit
+that was never there.
+
+That failure is not fixable with a better prompt, because the model has no
+independent check on its own reading. It is what **R0** exists for: on the same
+document, the pipeline's extractor also misread a cell (apartment 7, `Apă caldă
+menajeră`), R0 caught it because the row stopped summing to its printed total,
+the targeted re-read disagreed with the first reading, and the cell was marked
+unauditable instead of becoming an accusation. **Zero false audit findings.**
+
+*Finally, the answer changes between runs.* Same document, same prompt, five
+runs, two different sets of findings on both error samples. A letter that names
+different problems depending on when you asked is not something you send to an
+administrator.
+
+Reproduce with:
+
+```bash
+PYTHONPATH=. .venv/bin/python tools/baseline_chat.py --runs 5
+PYTHONPATH=. .venv/bin/python tools/baseline_chat.py --reeval samples/baseline_chat.json
+```
+
+The second form rescores saved answers without spending API calls. Two caveats
+on the measurement, both visible in the code: "identified" is keyword-based and
+therefore generous, and "ungrounded figures" only checks whether a number
+appears *somewhere* in the document — which is why the fabricated `347,2` above
+counts as grounded. Both biases favour the baseline.
+
+---
+
 ## 4. Two findings
 
 ### 4.1. Self-reported confidence does not detect reading errors
