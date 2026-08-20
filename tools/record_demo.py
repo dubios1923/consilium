@@ -161,10 +161,21 @@ def upload(sample: str) -> str:
 def audit_for(source_name: str) -> dict[str, Any] | None:
     from consilium.state import FirestoreAuditStore
 
-    for record in FirestoreAuditStore(project="hoa-agent-ab7x21").list_recent(limit=10):
+    for record in FirestoreAuditStore(project="hoa-agent-ab7x21").list_recent(limit=12):
         if record.source_uri.endswith(source_name):
             return {"id": record.audit_id, "status": record.status}
     return None
+
+
+def existing_audit_id(source_name: str) -> str | None:
+    """Dosarul cel mai recent pentru acest nume, INAINTE de incarcare.
+
+    Numele obiectului e generat de server, deci nu il stim dinainte si cautam
+    dupa sufix. Fara reperul asta, cautarea ar gasi dosarul unei filmari
+    anterioare, deja finalizat, si scena de asteptare s-ar incheia instant.
+    """
+    found = audit_for(source_name)
+    return found["id"] if found else None
 
 
 class Shots:
@@ -219,19 +230,19 @@ def record_scene(
             hold(seconds)
 
         elif scene.action == "upload":
-            name = f"demo_{int(time.time())}_{scene.sample}"
-            command = [
-                "gcloud", "storage", "cp",
-                str(SAMPLES / scene.sample), f"{BUCKET}/liste/{name}",
-            ]
-            page.set_content(terminal_html([(" ".join(command), "")]))
-            hold(min(2.5, seconds * 0.35))
-            shown, output = run_and_capture(command)
-            page.set_content(
-                terminal_html([(shown, output or "Copying... done.")])
+            # Incarcare prin pagina publica, nu prin gcloud: exact drumul pe care
+            # il are un proprietar, si tot un upload real in acelasi bucket.
+            page.goto(dashboard, wait_until="networkidle")
+            state["before"] = existing_audit_id(scene.sample)
+            hold(min(3.0, seconds * 0.35))
+            page.set_input_files(
+                "input[name=document]", str(SAMPLES / scene.sample)
             )
-            state[scene.sample] = name
-            hold(max(1.5, seconds - min(2.5, seconds * 0.35)))
+            hold(min(2.5, seconds * 0.25))
+            page.click("button[type=submit]")
+            page.wait_for_load_state("networkidle")
+            state[scene.sample] = scene.sample
+            hold(max(2.0, seconds * 0.4))
 
         elif scene.action == "wait_state":
             deadline = time.time() + WAIT_LIMIT_SECONDS
@@ -240,7 +251,11 @@ def record_scene(
             while time.time() < deadline:
                 page.goto(dashboard, wait_until="networkidle")
                 found = audit_for(source) if source else None
-                if found and found["status"] == scene.target_status:
+                if (
+                    found
+                    and found["id"] != state.get("before")
+                    and found["status"] == scene.target_status
+                ):
                     state["last_audit"] = found["id"]
                     break
                 hold(4.0)

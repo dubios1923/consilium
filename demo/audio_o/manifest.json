@@ -25,7 +25,7 @@
       "action": "upload",
       "audio": "demo/audio_o/02_gate_upload.wav",
       "seconds": 8.305,
-      "min_seconds": 6.0
+      "min_seconds": 8.0
     },
     {
       "index": 3,
@@ -41,7 +41,7 @@
       "action": "upload",
       "audio": "demo/audio_o/04_real_upload.wav",
       "seconds": 2.505,
-      "min_seconds": 5.0
+      "min_seconds": 7.0
     },
     {
       "index": 5,

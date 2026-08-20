@@ -14,6 +14,7 @@ from typing import Literal
 Action = Literal[
     "card", "detail", "letter", "upload", "wait_state", "terminal"
 ]
+# `upload` incarca prin pagina publica, exact cum ar face un proprietar.
 
 
 @dataclass
@@ -79,11 +80,11 @@ STORYBOARD: list[Scene] = [
         action="upload",
         sample="sample_not_a_payment_list.pdf",
         narration=(
-            "Here is the whole interface. One file, copied into a bucket. "
+            "Here is the whole interface. You pick a file and press one button. "
             "First, something that is not a payment list: a general assembly "
             "resolution."
         ),
-        min_seconds=6.0,
+        min_seconds=8.0,
     ),
     Scene(
         key="gate_result",
@@ -102,7 +103,7 @@ STORYBOARD: list[Scene] = [
         action="upload",
         sample="sample_errors.pdf",
         narration="Now a real payment list, the same way.",
-        min_seconds=5.0,
+        min_seconds=7.0,
     ),
     Scene(
         key="pipeline",
