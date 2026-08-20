@@ -16,8 +16,8 @@ LIMITARE CUNOSCUTĂ. R0 este o verificare aritmetică, deci acoperă doar câmpu
 care participă la o sumă. Câmpurile textuale nu au cum să fie prinse: pe
 sample_clean_scanned, referința de factură „FT-2025-11-000877" a fost citită
 „FF-2025-11-000877" (confuzie T/F la 150 dpi) și nicio verificare de acest tip
-nu o poate semnala. Consecința practică este limitată — referința se folosește la
-cererea documentului justificativ, nu la calcule — dar proprietarul trebuie
+nu o poate semnala. Consecința practică este limitată (referința se folosește la
+cererea documentului justificativ, nu la calcule), dar proprietarul trebuie
 avertizat că un cod de factură transcris dintr-un scan poate fi greșit cu o
 literă. Acoperirea ar cere o a doua sursă (registrul de facturi al asociației),
 nu o regulă suplimentară.
@@ -259,7 +259,7 @@ class Resolution:
 
         Se potriveste doar pe celula exacta, pe intreg blocul `charges` sau pe
         randul intreg. Un marcaj pe o singura celula nu trebuie sa faca
-        neverificabile si celelalte categorii ale aceluiasi apartament — asta ar
+        neverificabile si celelalte categorii ale aceluiasi apartament, fiindca asta ar
         transforma o eroare de citire intr-o gaura de acoperire de opt ori mai
         mare decat este.
         """

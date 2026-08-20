@@ -201,7 +201,7 @@ def test_letter_route_404s_without_a_pdf(client, store):
 
 @pytest.mark.parametrize(
     ("value", "expected"),
-    [(900.0, "900,00 lei"), (3343.87, "3.343,87 lei"), (None, "—"), ("x", "—")],
+    [(900.0, "900,00 lei"), (3343.87, "3.343,87 lei"), (None, ""), ("x", "")],
 )
 def test_money_formatting(value, expected):
     assert dashboard.money(value) == expected

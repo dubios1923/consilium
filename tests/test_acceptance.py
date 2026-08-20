@@ -1,7 +1,7 @@
 """Testul de acceptanță: reconciler-ul contra constatărilor plantate.
 
 Rulează pe extracțiile reale salvate în samples/extracted/, comparate cu
-samples/synthetic/expected_findings.json — documentul care spune exact ce erori
+samples/synthetic/expected_findings.json, documentul care spune exact ce erori
 a plantat generatorul. Nu se face niciun apel de model: extracțiile sunt deja pe
 disc, iar reconciler-ul e determinist.
 

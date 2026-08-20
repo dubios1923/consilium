@@ -147,7 +147,7 @@ def distribution_weights(
     """Ponderile teoretice pentru o poziție de cheltuială.
 
     Întoarce (ponderi, motiv_indisponibilitate). Ponderile lipsesc doar când
-    documentul nu conține datele necesare — caz în care poziția merge în
+    documentul nu conține datele necesare, caz în care poziția merge în
     coverage report, nu într-o constatare.
     """
     if expense.distribution_key == "cota_indiviza":
@@ -280,8 +280,8 @@ def rule_r3(
       - per apartament: nicio deviație peste pragul individual;
       - pe toată coloana: suma deviațiilor trebuie să fie ~0.
 
-    A doua este cea care contează. Rotunjirea reală se compensează — unele
-    apartamente în plus, altele în minus — și un prag individual singur lasă să
+    A doua este cea care contează. Rotunjirea reală se compensează (unele
+    apartamente în plus, altele în minus) și un prag individual singur lasă să
     treacă pe cineva care ciupește câțiva bani de la fiecare apartament. O
     deviație agregată sistematic într-o direcție nu e rotunjire, e transfer.
     """
@@ -337,7 +337,7 @@ def rule_r3(
         ]
         # Deviația agregată se calculează din valorile nerotunjite și se rotunjește
         # o singură dată, la final. Rotunjirea fiecărei deviații înainte de sumă
-        # fabrică un drift de câțiva bani pe o coloană perfect corectă — exact
+        # fabrică un drift de câțiva bani pe o coloană perfect corectă, exact
         # falsul pozitiv pe care regula ar trebui să-l excludă.
         drift = _round(sum(delta for _, delta, _ in deviations))
         verified.append(expense.category)
@@ -623,7 +623,7 @@ def rule_r7(
                 message=(
                     f"Lista a fost afișată la {posted.isoformat()}. Contestația "
                     f"privind modul de calcul al cotei trebuie depusă până la "
-                    f"{deadline.isoformat()} inclusiv — mai sunt {days_left} "
+                    f"{deadline.isoformat()} inclusiv. Mai sunt {days_left} "
                     f"zile. Președintele are obligația să răspundă în scris în "
                     f"{response} zile de la primire; dacă nu o face, sesizarea "
                     f"autorității locale devine disponibilă după {escalation} "

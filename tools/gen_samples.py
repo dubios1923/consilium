@@ -840,7 +840,7 @@ def render_pdf(document: dict[str, Any], path: Path) -> None:
 # --------------------------------------------------------------------------
 # Layout alternativ
 #
-# Aceleasi date, acelasi seed, aceleasi erori plantate — alt ambalaj. Exista ca
+# Aceleasi date, acelasi seed, aceleasi erori plantate, dar alt ambalaj. Exista
 # sa se poata masura cat de generala e extractia: un layout inventat de acelasi
 # generator care produce si sample-urile de baza nu dovedeste nimic daca arata
 # la fel. Aici se schimba tot ce se schimba intre doua programe de administrare
@@ -1156,7 +1156,7 @@ def make_scanned(source: Path, target: Path, seed: int) -> None:
 #
 # Serveste gate-ului de intrare: fara un negativ, triajul nu poate fi demonstrat
 # decat pe un document real al cuiva. Contine exact tiparele care trebuie sa NU
-# declanseze pipeline-ul — hotarare de adunare generala, fara tabel de
+# declanseze pipeline-ul: hotarare de adunare generala, fara tabel de
 # repartizare pe apartamente.
 # --------------------------------------------------------------------------
 

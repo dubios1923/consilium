@@ -188,7 +188,7 @@ Transcrie TABELUL DE REPARTIZARE PE APARTAMENTE din acest PDF (secțiunea
 antetul repetat; parcurge-l integral.
 
 Returnează câte o intrare per apartament, în ordinea din document. NU include
-rândul final "TOTAL" — acela nu este un apartament.
+rândul final "TOTAL", care nu este un apartament.
 
 Pentru fiecare apartament:
 - `apartment_no`: numărul apartamentului, ca text.
@@ -208,7 +208,7 @@ Pentru fiecare apartament:
   folosește antetul coloanei ca atare și marchează câmpul în
   `low_confidence_fields`.
   NU include în `charges` coloanele "Total lună curentă", "Restanțe",
-  "Penalizări" sau "TOTAL DE PLATĂ" — acelea au câmpurile lor.
+  "Penalizări" sau "TOTAL DE PLATĂ", care au câmpurile lor.
 - `arrears`: valoarea din coloana "Restanțe".
 - `penalties`: valoarea din coloana "Penalizări".
 - `total_due`: valoarea din coloana "TOTAL DE PLATĂ".
@@ -523,7 +523,7 @@ if __name__ == "__main__":
 #
 # Când R0 pică, nu știm dacă documentul e inconsistent sau dacă noi am citit
 # prost. Singurul mod de a afla este să citim din nou, izolat, doar zona
-# implicată — la rezoluție mai mare și cu un răspuns mult mai mic decât o
+# implicată, la rezoluție mai mare și cu un răspuns mult mai mic decât o
 # transcriere de tabel întreg.
 # --------------------------------------------------------------------------
 

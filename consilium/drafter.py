@@ -302,7 +302,7 @@ RAPORT DE ACOPERIRE (ce nu s-a putut verifica):
 DOCUMENTE PE CARE AUDITUL LE CERE DEJA:
 {documents}
 
-TEMEI ȘI TERMEN — folosește EXACT ce scrie mai jos. Nu invoca alt articol, alt
+TEMEI ȘI TERMEN. Folosește EXACT ce scrie mai jos. Nu invoca alt articol, alt
 alineat, alt act normativ și niciun alt termen:
 {legal_block}
 
@@ -344,9 +344,9 @@ def _coverage_block(result: AuditResult) -> str:
             f"- {rule.rule_id}: {rule.status} ({rule.checked}/{rule.total}){suffix}"
         )
     for category, reason in coverage.expense_lines_unverified:
-        lines.append(f"- neverificat: {category} — {reason}")
+        lines.append(f"- neverificat: {category}, {reason}")
     for number, reason in coverage.apartments_excluded:
-        lines.append(f"- apartament exclus: {number} — {reason}")
+        lines.append(f"- apartament exclus: {number}, {reason}")
     return "\n".join(lines)
 
 
@@ -357,7 +357,7 @@ MODE_GUIDANCE = {
         "- temei: {art_28_3}\n"
         "  ({right_28_3})\n"
         "- fereastra de contestare este DESCHISĂ; termenul exact și numărul de "
-        "zile rămase îți sunt date în constatarea R7 — citează-le de acolo, nu "
+        "zile rămase îți sunt date în constatarea R7. Citează-le de acolo, nu "
         "le recalcula.\n"
         "- președintele asociației are obligația de a răspunde în scris în "
         "{response_days} zile de la primirea contestației.\n"

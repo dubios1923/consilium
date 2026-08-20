@@ -2,8 +2,8 @@
 
 Există dintr-un motiv de infrastructură, nu de design: Eventarc nu poate ținti
 direct un Cloud Run Job (`--destination-run-job` nu există în gcloud 581), doar
-un serviciu. Serviciul acesta face un singur lucru — filtrează evenimentul și
-declanșează o execuție de job cu obiectul primit — și răspunde imediat. Auditul
+un serviciu. Serviciul acesta face un singur lucru, filtrează evenimentul și
+declanșează o execuție de job cu obiectul primit, apoi răspunde imediat. Auditul
 rulează detașat, în job, exact ca în arhitectura cerută.
 
 Filtrul pe prefixul de ieșire trăiește și aici, nu doar în job: artefactele se
@@ -104,5 +104,5 @@ async def receive(request: Request) -> Response:
     if status >= 400:
         print(text)
         # 204 oricum: o reîncercare Eventarc ar redeclanșa acelasi obiect, iar
-        # auditul e idempotent pe audit_id — dar bucla de retry nu ajută.
+        # auditul e idempotent pe audit_id, dar bucla de retry nu ajută.
     return Response(status_code=204)

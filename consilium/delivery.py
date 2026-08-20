@@ -4,7 +4,7 @@ Modul izolat: nu importă reconciler-ul, nu atinge nicio regulă și nu recalcul
 nimic. Primește constatările deja calculate și scrisoarea deja verificată, și le
 trimite mai departe.
 
-Rezumatul din corpul emailului este pur template — niciun model nu îl scrie.
+Rezumatul din corpul emailului este pur template: niciun model nu îl scrie.
 Cifrele din el sunt verificate cu aceeași listă de sume permise ca scrisoarea:
 dacă o sumă nu provine dintr-o constatare calculată, livrarea e refuzată.
 
@@ -138,7 +138,7 @@ def build_summary(
     findings = result.findings
     lines = [
         f"Audit {payment.document_id}",
-        f"{payment.association_ref} — perioada {payment.period}",
+        f"{payment.association_ref}, perioada {payment.period}",
         "",
     ]
 
@@ -150,7 +150,7 @@ def build_summary(
         lines.append("")
         for finding in findings:
             amount = (
-                f" — {format_money(finding.amount_involved)} lei"
+                f": {format_money(finding.amount_involved)} lei"
                 if finding.amount_involved is not None
                 else ""
             )
@@ -173,7 +173,7 @@ def build_summary(
 
     lines.append(f"Acoperire: {result.coverage.summary()}.")
     for category, reason in result.coverage.expense_lines_unverified:
-        lines.append(f"  neverificat — {category}: {reason}")
+        lines.append(f"  neverificat, {category}: {reason}")
     lines.append("")
 
     if requested_documents:
@@ -203,9 +203,9 @@ def verify_summary(
 def build_subject(payment: PaymentList, result: AuditResult) -> str:
     count = len(result.findings)
     if count == 0:
-        return f"Consilium — {payment.document_id}: nicio constatare"
+        return f"Consilium, {payment.document_id}: nicio constatare"
     return (
-        f"Consilium — {payment.document_id}: {count} constatări "
+        f"Consilium, {payment.document_id}: {count} constatări "
         f"({payment.period})"
     )
 

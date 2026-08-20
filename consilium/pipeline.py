@@ -5,7 +5,7 @@ face tot. Din cei patru, doar Extractor și Drafter ating un model; Integrity ș
 Reconciler rulează cod determinist. Împachetarea lor ca `LlmAgent` ar anula exact
 garanția pentru care există: un audit reproductibil, explicabil rând cu rând.
 Sunt sub-agenți ADK ca să intre în aceeași secvență, în același log de evenimente
-și în aceeași stare de sesiune — nu ca să pară inteligenți.
+și în aceeași stare de sesiune, nu ca să pară inteligenți.
 
 Fiecare tranziție scrie în Firestore înainte și după: dacă pipeline-ul moare,
 `step_log` arată unde.
@@ -43,8 +43,8 @@ from consilium.state import AuditStore
 from consilium.triage import triage as run_triage
 
 # `SequentialAgent` nu se oprește la `ctx.end_invocation`: verifică doar
-# `should_pause_invocation`. Ca să oprim lanțul — fie pentru că documentul a fost
-# respins, fie pentru că o etapă a eșuat — punem un steag în starea sesiunii, pe
+# `should_pause_invocation`. Ca să oprim lanțul (fie pentru că documentul a fost
+# respins, fie pentru că o etapă a eșuat) punem un steag în starea sesiunii, pe
 # care fiecare etapă îl verifică înainte să pornească.
 STOP_FLAG = "pipeline_stopped"
 
@@ -78,7 +78,7 @@ def artifact_destination_for(base: str, audit_id: str) -> str:
     """Directorul de artefacte al unui audit.
 
     Fiecare audit primește propriul director. Fără el, `findings.csv` și
-    `audit_report.json` ale unui audit le suprascriu pe ale precedentului —
+    `audit_report.json` ale unui audit le suprascriu pe ale precedentului:
     numai scrisoarea poartă audit_id în nume.
     """
     if base.startswith("gs://"):
@@ -171,7 +171,7 @@ class _Stage(BaseAgent):
                 audit_id, self.step, started, f"{type(error).__name__}: {error}"
             )
             self._stop(ctx)
-            yield self._note(f"{self.step}: eșec — {error}", {STOP_FLAG: True})
+            yield self._note(f"{self.step}: eșec, {error}", {STOP_FLAG: True})
             return
 
         store.finish_step(audit_id, self.step, started, output=delta.get("_log"))
@@ -205,7 +205,7 @@ class TriageAgent(_Stage):
             summary = (
                 f"Triaj: {outcome.status}"
                 + (f" ({outcome.document_type})" if outcome.document_type else "")
-                + (f" — {outcome.reason}" if outcome.reason else "")
+                + (f". {outcome.reason}" if outcome.reason else "")
             )
             return summary, {
                 "triage_status": outcome.status,
@@ -219,7 +219,7 @@ class TriageAgent(_Stage):
 
         self.pipeline.store.set_status(audit_id, "rejected")
         summary = (
-            f"Document respins: {outcome.document_type or 'tip necunoscut'} — "
+            f"Document respins: {outcome.document_type or 'tip necunoscut'}. "
             f"{outcome.reason}"
         )
         return summary, {
@@ -399,7 +399,7 @@ class DeliveryAgent(_Stage):
 
     Nu ridică niciodată: dacă livrarea eșuează, motivul ajunge în Firestore sub
     `delivery`, iar auditul rămâne reușit. Artefactele sunt deja în GCS, deci
-    scrisoarea nu se pierde — doar nu ajunge singură la destinatar.
+    scrisoarea nu se pierde, doar nu ajunge singură la destinatar.
     """
 
     def execute(self, ctx: InvocationContext) -> tuple[str, dict[str, Any]]:
@@ -419,7 +419,7 @@ class DeliveryAgent(_Stage):
         if outcome.recipient:
             summary += f" către {outcome.recipient}"
         if outcome.error:
-            summary += f" — {outcome.error}"
+            summary += f". {outcome.error}"
         return summary, {
             "delivery_status": outcome.status,
             "_log": {"delivery": outcome.status, "error": outcome.error},

@@ -2,7 +2,7 @@
 
 Nu declanșează nimic și nu modifică nimic: citește din Firestore și servește
 scrisoarea din GCS. Un audit se pornește punând un PDF în bucket, nu apăsând un
-buton — dacă pagina ar putea executa, un refresh într-un demo ar porni procesări
+buton. Dacă pagina ar putea executa, un refresh într-un demo ar porni procesări
 în paralel pe același document.
 
 Lista se reîmprospătează singură cât timp există audituri în lucru, ca să se
@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from consilium.state import AuditRecord, FirestoreAuditStore
 
-app = FastAPI(title="Consilium — inspecție audituri")
+app = FastAPI(title="Consilium: inspecție audituri")
 
 STATUS_LABELS = {
     "queued": "în așteptare",
@@ -62,14 +62,14 @@ def e(value: Any) -> str:
 
 def money(value: Any) -> str:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
-        return "—"
+        return ""
     text = f"{float(value):,.2f}"
     return text.replace(",", "\x00").replace(".", ",").replace("\x00", ".") + " lei"
 
 
 def when(timestamp: float | None) -> str:
     if not timestamp:
-        return "—"
+        return ""
     return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime(
         "%d.%m.%Y %H:%M"
     )
@@ -196,10 +196,10 @@ def index() -> HTMLResponse:
         rows.append(
             f"""<tr>
 <td><a href="/audit/{e(record.audit_id)}"><code>{e(record.audit_id)}</code></a></td>
-<td>{e(record.association_ref or "—")}<div class="sev">{e(record.source_uri.rsplit("/", 1)[-1])}</div></td>
-<td>{e(record.period or "—")}</td>
+<td>{e(record.association_ref) or "<span class=\"sev\">necunoscută</span>"}<div class="sev">{e(record.source_uri.rsplit("/", 1)[-1])}</div></td>
+<td>{e(record.period or "")}</td>
 <td>{status_pill(record.status)}</td>
-<td class="num">{count if record.status == "done" else "—"}</td>
+<td class="num">{count if record.status == "done" else ""}</td>
 <td class="num">{when(record.created_at)}</td></tr>"""
         )
 
@@ -212,7 +212,7 @@ def index() -> HTMLResponse:
 
     running = any(r.status in RUNNING for r in records)
     body = f"""<header class="top">
-<h1>Consilium — audituri</h1>
+<h1>Consilium: audituri</h1>
 <div class="sub">Liste de plată ale asociațiilor de proprietari. Pagină de inspecție, read-only.
 {' Se reîmprospătează automat.' if running else ''}</div>
 </header>
@@ -223,7 +223,7 @@ def index() -> HTMLResponse:
   <div class="stat"><div class="n">{rejected}</div><div class="l">respinse la triaj</div></div>
 </div>
 <h2>Dosare</h2>{table}"""
-    return page("Consilium — audituri", body, refresh=running)
+    return page("Consilium: audituri", body, refresh=running)
 
 
 def render_triage(record: AuditRecord) -> str:
@@ -239,7 +239,7 @@ def render_triage(record: AuditRecord) -> str:
             f"Pipeline-ul de extragere nu a fost pornit."
         )
     elif status == "unavailable":
-        head = "Triaj indisponibil — document trecut mai departe"
+        head = "Triaj indisponibil, document trecut mai departe"
         detail = e(triage.get("error") or triage.get("reason"))
     else:
         head = "Acceptat la triaj"
@@ -293,11 +293,11 @@ def render_coverage(record: AuditRecord) -> str:
     rules = "".join(
         f"<tr><td><b>{e(rule.get('rule_id'))}</b></td><td>{e(rule.get('status'))}</td>"
         f"<td class='num'>{e(rule.get('checked'))}/{e(rule.get('total'))}</td>"
-        f"<td>{e(rule.get('reason') or '—')}</td></tr>"
+        f"<td>{e(rule.get('reason') or '')}</td></tr>"
         for rule in coverage.get("rules", [])
     )
     unverified = "".join(
-        f"<li><b>{e(item.get('category'))}</b> — {e(item.get('reason'))}</li>"
+        f"<li><b>{e(item.get('category'))}</b>: {e(item.get('reason'))}</li>"
         for item in coverage.get("expense_lines_unverified", [])
     )
     docs = "".join(
@@ -321,7 +321,7 @@ def render_timeline(record: AuditRecord) -> str:
         duration = entry.get("duration_s")
         steps.append(
             f"""<div class="step {css}"><div>{e(STEP_LABELS.get(entry['step'], entry['step']))}</div>
-<div class="d">{f'{duration:.2f} s' if isinstance(duration, (int, float)) else '—'}</div></div>"""
+<div class="d">{f'{duration:.2f} s' if isinstance(duration, (int, float)) else ''}</div></div>"""
         )
     if not steps:
         return ""
@@ -374,7 +374,7 @@ def detail(audit_id: str) -> HTMLResponse:
 <h1>{e(record.association_ref or record.source_uri.rsplit("/", 1)[-1])}</h1>
 <div class="sub">{status_pill(record.status)} &nbsp; <code>{e(record.audit_id)}</code>
 &nbsp;·&nbsp; {e(record.document_id or "document neidentificat")}
-&nbsp;·&nbsp; perioada {e(record.period or "—")}
+&nbsp;·&nbsp; perioada {e(record.period or "necunoscută")}
 &nbsp;·&nbsp; {when(record.created_at)}</div>
 {f'<div class="sub" style="color:var(--warn);margin-top:6px">Eroare: {e(record.error)}</div>' if record.error else ''}
 </header>
@@ -386,7 +386,7 @@ def detail(audit_id: str) -> HTMLResponse:
 {artifacts}
 <div class="note" style="margin-top:26px">Sursă: <code>{e(record.source_uri)}</code></div>"""
     return page(
-        f"Consilium — {record.audit_id}", body, refresh=record.status in RUNNING
+        f"Consilium: {record.audit_id}", body, refresh=record.status in RUNNING
     )
 
 

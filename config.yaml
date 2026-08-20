@@ -89,7 +89,7 @@ triage:
   # ~82 de secunde. Modelul e configurabil pentru că oferta se schimbă: Gemma
   # ar fi alegerea naturală ca dimensiune, dar pe Vertex nu e servit serverless
   # (404 pe toate variantele în acest proiect), ci doar prin endpoint dedicat cu
-  # GPU — care ar costa mai mult decât secundele economisite. Cel mai mic model
+  # GPU, care ar costa mai mult decât secundele economisite. Cel mai mic model
   # apelabil fără infrastructură proprie rămâne flash-lite.
   enabled: true
   model: "gemini-2.5-flash-lite"

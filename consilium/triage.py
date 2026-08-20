@@ -127,7 +127,7 @@ def triage(
 ) -> TriageOutcome:
     """Decide dacă documentul merită pipeline-ul. Nu ridică niciodată.
 
-    Orice problemă — model indisponibil, pagină nerandabilă, răspuns invalid —
+    Orice problemă (model indisponibil, pagină nerandabilă, răspuns invalid)
     întoarce `status="unavailable"` cu `is_payment_list=True`, adică „nu știu,
     treci mai departe”.
     """

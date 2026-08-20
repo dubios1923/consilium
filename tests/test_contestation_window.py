@@ -63,14 +63,14 @@ def test_window_open_reports_days_remaining(config):
     assert len(findings) == 1
     assert findings[0].finding_type == "contestation_window_open"
     assert findings[0].severity == "info"
-    assert "mai sunt 5 zile" in findings[0].message
+    assert "Mai sunt 5 zile" in findings[0].message
     assert DEADLINE.isoformat() in findings[0].message
 
 
 def test_last_day_of_the_window_is_still_open(config):
     findings = r7(audit(case_with_findings(), config, as_of=DEADLINE))
     assert findings[0].finding_type == "contestation_window_open"
-    assert "mai sunt 0 zile" in findings[0].message
+    assert "Mai sunt 0 zile" in findings[0].message
 
 
 def test_window_open_cites_paragraph_three(config):
