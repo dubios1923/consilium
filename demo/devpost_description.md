@@ -21,9 +21,10 @@ next month starts over.
 
 ## What it does
 
-You copy a PDF into a bucket. Nothing else. Roughly two minutes later there is a
-formal contestation letter, a machine readable findings file, and an audit
-report, written to Cloud Storage and emailed as an attachment.
+You pick a PDF on the page, or copy it into the bucket from a terminal. Nothing
+else. Roughly two minutes later there is a formal contestation letter, a machine
+readable findings file, and an audit report, written to Cloud Storage and emailed
+as an attachment.
 
 **Features**
 
@@ -58,8 +59,11 @@ report, written to Cloud Storage and emailed as an attachment.
   contestation under alin. (3); if it has expired it writes a request for copies
   under alin. (1), which has no deadline, and says so.
 - **Email delivery** as an optional final step that cannot fail an audit.
-- **A read only inspection page** that shows every case, its stage timings, its
-  findings and its letter.
+- **An inspection page** that shows every case, its stage timings, its findings
+  and its letter. It is in English or Romanian depending on the browser, and no
+  route on it can modify an existing audit. The findings and the letter stay in
+  Romanian: they quote a Romanian document and Romanian statute, and the letter
+  is a legal filing.
 
 ## Tech stack
 
