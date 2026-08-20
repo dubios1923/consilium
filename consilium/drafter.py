@@ -493,20 +493,57 @@ def draft_letter(
 # Artefacte
 # --------------------------------------------------------------------------
 
-_FONT_CANDIDATES = [
-    (
-        "/usr/share/fonts/liberation-sans-fonts/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/liberation-sans-fonts/LiberationSans-Bold.ttf",
-    ),
-    (
-        "/usr/share/fonts/google-noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/google-noto/NotoSans-Bold.ttf",
-    ),
-    (
-        "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
-        "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf",
-    ),
+# Fontul scrisorii trebuie să aibă glifele românești complete, inclusiv ș și ț
+# cu virgulă dedesubt (U+0219/U+021B), care NU sunt în Latin-1. Familiile sunt
+# căutate în ordinea preferinței, recursiv: căile diferă între distribuții
+# (Fedora pune Liberation în /usr/share/fonts/liberation-sans-fonts/, Debian în
+# /usr/share/fonts/truetype/liberation/), iar o listă de căi fixe a produs deja
+# un PDF de producție randat integral cu Helvetica și diacriticele înlocuite de
+# pătrate. De aceea aici nu există fallback: fără font potrivit, se ridică
+# excepție.
+_FONT_FAMILIES: list[tuple[str, str]] = [
+    ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf"),
+    ("LiberationSans-Regular.ttf", "LiberationSans-Bold.ttf"),
+    ("NotoSans-Regular.ttf", "NotoSans-Bold.ttf"),
+    ("FreeSans.ttf", "FreeSansBold.ttf"),
 ]
+
+_FONT_SEARCH_DIRS = [
+    Path(__file__).resolve().parent.parent / "assets" / "fonts",
+    Path("/usr/share/fonts"),
+    Path("/usr/local/share/fonts"),
+    Path.home() / ".local" / "share" / "fonts",
+    Path.home() / ".fonts",
+]
+
+# Fără aceste caractere documentul nu e lizibil în română.
+REQUIRED_GLYPHS = "ăâîșțĂÂÎȘȚ„”"
+
+FONT_REGULAR = "ConsiliumSans"
+FONT_BOLD = "ConsiliumSans-Bold"
+
+
+class FontError(RuntimeError):
+    """Niciun font cu acoperire românească completă nu a fost găsit."""
+
+
+def _find_font_file(filename: str) -> Path | None:
+    for directory in _FONT_SEARCH_DIRS:
+        if not directory.is_dir():
+            continue
+        for candidate in directory.rglob(filename):
+            if candidate.is_file():
+                return candidate
+    return None
+
+
+def _missing_glyphs(font_name: str) -> str:
+    """Caracterele românești pe care fontul înregistrat nu le poate reda."""
+    from reportlab.pdfbase import pdfmetrics
+
+    mapping = pdfmetrics.getFont(font_name).face.charToGlyph
+    return "".join(ch for ch in REQUIRED_GLYPHS if ord(ch) not in mapping)
+
 
 FINDINGS_CSV_COLUMNS = [
     "rule_id",
@@ -523,17 +560,41 @@ FINDINGS_CSV_COLUMNS = [
 
 
 def _register_fonts() -> tuple[str, str]:
+    """Înregistrează un TTF cu acoperire românească. Ridică FontError dacă nu există.
+
+    Nu cade înapoi pe Helvetica: Helvetica nu are ă, â, î, ș, ț, iar rezultatul
+    e un document care arată corect în cod și e ilizibil pe hârtie.
+    """
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    if "ConsiliumSans" in pdfmetrics.getRegisteredFontNames():
-        return "ConsiliumSans", "ConsiliumSans-Bold"
-    for regular, bold in _FONT_CANDIDATES:
-        if Path(regular).exists() and Path(bold).exists():
-            pdfmetrics.registerFont(TTFont("ConsiliumSans", regular))
-            pdfmetrics.registerFont(TTFont("ConsiliumSans-Bold", bold))
-            return "ConsiliumSans", "ConsiliumSans-Bold"
-    return "Helvetica", "Helvetica-Bold"
+    if FONT_REGULAR in pdfmetrics.getRegisteredFontNames():
+        return FONT_REGULAR, FONT_BOLD
+
+    tried: list[str] = []
+    for regular_name, bold_name in _FONT_FAMILIES:
+        regular = _find_font_file(regular_name)
+        bold = _find_font_file(bold_name)
+        if regular is None or bold is None:
+            tried.append(regular_name)
+            continue
+        pdfmetrics.registerFont(TTFont(FONT_REGULAR, str(regular)))
+        pdfmetrics.registerFont(TTFont(FONT_BOLD, str(bold)))
+        missing = _missing_glyphs(FONT_REGULAR)
+        if missing:
+            raise FontError(
+                f"{regular} nu conține glifele românești: {missing}. "
+                "Instalează fonts-dejavu-core sau fonts-liberation."
+            )
+        return FONT_REGULAR, FONT_BOLD
+
+    raise FontError(
+        "niciun font cu acoperire românească nu a fost găsit (căutat: "
+        + ", ".join(tried)
+        + " în "
+        + ", ".join(str(d) for d in _FONT_SEARCH_DIRS)
+        + "). Instalează fonts-dejavu-core sau fonts-liberation."
+    )
 
 
 def format_money(value: float) -> str:
@@ -542,12 +603,16 @@ def format_money(value: float) -> str:
 
 
 def render_letter_pdf(draft: LetterDraft, target: Path) -> Path:
-    """Redactează scrisoarea ca PDF A4, format de corespondență oficială."""
+    """Redactează scrisoarea ca PDF A4, format de corespondență oficială.
+
+    Doar randare: textul, sumele și structura vin din `draft` neatinse.
+    """
     from reportlab.lib.enums import TA_JUSTIFY
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
+        KeepTogether,
         ListFlowable,
         ListItem,
         Paragraph,
@@ -556,19 +621,42 @@ def render_letter_pdf(draft: LetterDraft, target: Path) -> Path:
     )
 
     regular, bold = _register_fonts()
+
     body = ParagraphStyle(
         "body", fontName=regular, fontSize=10.5, leading=15.5,
-        alignment=TA_JUSTIFY, spaceAfter=7,
+        alignment=TA_JUSTIFY, spaceAfter=8,
     )
+    # Titlurile de secțiune rămân lipite de ce urmează: un titlu singur în
+    # subsolul paginii arată ca o scrisoare ruptă.
     heading = ParagraphStyle(
-        "heading", fontName=bold, fontSize=11.5, leading=15, spaceBefore=10,
-        spaceAfter=5,
+        "heading", fontName=bold, fontSize=11.5, leading=15,
+        spaceBefore=20, spaceAfter=9, keepWithNext=1,
     )
     title = ParagraphStyle(
-        "title", fontName=bold, fontSize=13.5, leading=18, spaceAfter=10,
+        "title", fontName=bold, fontSize=14, leading=19,
+        spaceBefore=4, spaceAfter=12,
+    )
+    subject = ParagraphStyle(
+        "subject", fontName=regular, fontSize=10.5, leading=15,
+        alignment=TA_JUSTIFY, spaceAfter=14,
     )
     meta = ParagraphStyle(
-        "meta", fontName=regular, fontSize=9, leading=13, spaceAfter=2,
+        "meta", fontName=regular, fontSize=9, leading=13.5, spaceAfter=3,
+    )
+    finding_label = ParagraphStyle(
+        "finding_label", fontName=bold, fontSize=10, leading=14,
+        spaceBefore=4, spaceAfter=1, keepWithNext=1,
+    )
+    finding_amount = ParagraphStyle(
+        "finding_amount", fontName=regular, fontSize=9.5, leading=13,
+        spaceAfter=5, keepWithNext=1,
+    )
+    listed = ParagraphStyle(
+        "listed", fontName=regular, fontSize=10.5, leading=15.5,
+        alignment=TA_JUSTIFY, spaceAfter=9,
+    )
+    signature = ParagraphStyle(
+        "signature", fontName=regular, fontSize=9.5, leading=22,
     )
 
     document = SimpleDocTemplate(
@@ -593,10 +681,9 @@ def render_letter_pdf(draft: LetterDraft, target: Path) -> Path:
     if draft.audit_id:
         story.append(Paragraph(f"Dosar de verificare: {draft.audit_id}", meta))
     story += [
-        Spacer(1, 10),
+        Spacer(1, 16),
         Paragraph(draft.title, title),
-        Paragraph(draft.subject, body),
-        Spacer(1, 4),
+        Paragraph(draft.subject, subject),
         Paragraph(draft.opening, body),
     ]
 
@@ -608,34 +695,61 @@ def render_letter_pdf(draft: LetterDraft, target: Path) -> Path:
                 label += f", apartamentul {finding.apartment_no}"
             if finding.category:
                 label += f", „{finding.category}”"
-            amount = (
-                f" — sumă implicată: {format_money(finding.amount_involved)} lei"
-                if finding.amount_involved is not None
-                else ""
-            )
-            story.append(Paragraph(f"<b>[{label}]</b>{amount}", meta))
-            story.append(Paragraph(text, body))
+
+            # Fiecare constatare e un bloc: eticheta regulii pe un rând, suma pe
+            # rândul următor, apoi explicația. Blocul nu se rupe între pagini.
+            block: list[Any] = [Paragraph(f"[{label}]", finding_label)]
+            if finding.amount_involved is not None:
+                block.append(
+                    Paragraph(
+                        f"Sumă implicată: "
+                        f"{format_money(finding.amount_involved)} lei",
+                        finding_amount,
+                    )
+                )
+            block.append(Paragraph(text, body))
+            story.append(KeepTogether(block))
 
     story.append(Paragraph("Verificări care nu au putut fi efectuate", heading))
     story.append(Paragraph(draft.coverage_paragraph, body))
 
     story.append(Paragraph("Documente solicitate", heading))
+    # Spațiu explicit între titlu și primul număr: fără el, „1” urcă până sub
+    # titlu și cele două se citesc ca „Documente solicitate1”.
+    story.append(Spacer(1, 3))
     story.append(
         ListFlowable(
-            [ListItem(Paragraph(item, body)) for item in draft.requested_documents],
+            [
+                ListItem(Paragraph(item, listed), leftIndent=22, value=index)
+                for index, item in enumerate(draft.requested_documents, start=1)
+            ],
             bulletType="1",
-            leftIndent=14,
+            bulletFontName=bold,
+            bulletFontSize=10.5,
+            bulletDedent=22,
+            leftIndent=22,
+            start=1,
         )
     )
 
     story.append(Paragraph("Termen de răspuns", heading))
     story.append(Paragraph(draft.deadline_paragraph, body))
-    story.append(Spacer(1, 12))
+
+    story.append(Spacer(1, 22))
     story.append(Paragraph(draft.closing, body))
-    story.append(Spacer(1, 18))
-    story.append(Paragraph("Data: ____________", meta))
-    story.append(Paragraph("Proprietar, apartamentul nr. ______", meta))
-    story.append(Paragraph("Nume și semnătură: ______________________", meta))
+    story.append(Spacer(1, 34))
+    story.append(
+        KeepTogether(
+            [
+                Paragraph("Data: __________________", signature),
+                Paragraph("Proprietar, apartamentul nr. __________", signature),
+                Paragraph(
+                    "Nume și semnătură: ______________________________",
+                    signature,
+                ),
+            ]
+        )
+    )
 
     document.build(story)
     return target
