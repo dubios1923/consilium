@@ -174,17 +174,30 @@ class Shots:
         self.page = page
         self.directory = directory
         self.count = 0
+        self.failures = 0
         directory.mkdir(parents=True, exist_ok=True)
+
+    def shoot(self) -> bool:
+        """Un cadru. Un esec nu opreste filmarea: la 3 fps nu se vede lipsa lui."""
+        try:
+            self.page.screenshot(
+                path=str(self.directory / f"{self.count + 1:05d}.png"),
+                animations="disabled",
+            )
+        except Exception as error:  # noqa: BLE001
+            self.failures += 1
+            if self.failures in (1, 10):
+                print(f"    captura esuata ({error!s:.60}...)", flush=True)
+            return False
+        self.count += 1
+        return True
 
     def hold(self, seconds: float) -> None:
         deadline = time.time() + max(0.0, seconds)
         interval = 1.0 / CAPTURE_FPS
         while True:
             began = time.time()
-            self.count += 1
-            self.page.screenshot(
-                path=str(self.directory / f"{self.count:05d}.png"), animations="disabled"
-            )
+            self.shoot()
             if time.time() >= deadline:
                 return
             time.sleep(max(0.0, interval - (time.time() - began)))
@@ -317,6 +330,10 @@ def main() -> int:
                 }
             )
             print(f"    {actual:6.1f}s real, {shots.count} cadre", flush=True)
+            MANIFEST.write_text(
+                json.dumps({"viewport": VIEWPORT, "scenes": entries}, indent=2),
+                encoding="utf-8",
+            )
         browser.close()
 
     MANIFEST.write_text(
