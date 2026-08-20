@@ -103,7 +103,7 @@ STORYBOARD: list[Scene] = [
         action="upload",
         sample="sample_errors.pdf",
         narration="Now a real payment list, the same way.",
-        min_seconds=7.0,
+        min_seconds=6.0,
     ),
     Scene(
         key="pipeline",
@@ -176,10 +176,9 @@ STORYBOARD: list[Scene] = [
             "Two things we learned. First: asking a model how confident it is "
             "does not detect its own reading errors. On a degraded scan, fidelity "
             "was ninety nine point six percent, and both errors were reported with "
-            "full confidence. The fix is arithmetic redundancy. A financial "
-            "document contains its own check: rows sum to totals, columns sum to "
-            "declared amounts. When apartment seven stopped adding up, the cell was "
-            "marked unauditable instead of becoming an accusation."
+            "full confidence. The fix is arithmetic redundancy: rows sum to totals, "
+            "columns sum to declared amounts. When apartment seven stopped adding "
+            "up, the cell was marked unauditable instead of becoming an accusation."
         ),
         min_seconds=14.0,
     ),
@@ -229,7 +228,7 @@ STORYBOARD: list[Scene] = [
             "wrote its letter, its findings and its report into the bucket under "
             "its own case folder."
         ),
-        min_seconds=18.0,
+        min_seconds=15.0,
     ),
     Scene(
         key="architecture",
@@ -266,8 +265,7 @@ STORYBOARD: list[Scene] = [
             "Homeowners' associations are the first vertical because it is the "
             "problem I have. The shape is general: a financial document from a "
             "party with an interest in erring in its own favour, and a deadline to "
-            "object. Utility bills, medical bills, insurance settlements. The rules "
-            "change. The integrity check does not."
+            "object. The rules change. The integrity check does not."
         ),
         min_seconds=12.0,
     ),

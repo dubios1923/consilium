@@ -70,6 +70,17 @@ def fit_scene(
     return out, factor
 
 
+def pad_track(source: Path, target_seconds: float, index: int, work: Path) -> Path:
+    """Aduce replica exact la durata segmentului video, adaugand liniste."""
+    out = work / f"track_{index:02d}.wav"
+    run([
+        "ffmpeg", "-y", "-loglevel", "error", "-i", str(source),
+        "-af", f"apad=whole_dur={target_seconds:.3f}",
+        "-t", f"{target_seconds:.3f}", "-ar", "48000", "-ac", "1", str(out),
+    ])
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default=str(OUTPUT))
@@ -102,7 +113,11 @@ def main() -> int:
             Path(item["shots"]), item["frames"], target, entry["index"], key, work
         )
         pieces.append(piece)
-        tracks.append(Path(entry["audio"]))
+        # Pista se completeaza cu liniste pana la durata segmentului video.
+        # Fara asta, orice scena cu un minim impus mai lung decat replica ei
+        # impinge sunetul inaintea imaginii, iar decalajul se aduna pana la
+        # capat: aici ajunsese la zece secunde, iar `-shortest` taia finalul.
+        tracks.append(pad_track(Path(entry["audio"]), target, entry["index"], work))
         total += target
         print(f"  {key:18s} {item['recorded_seconds']:6.1f}s -> {target:5.1f}s "
               f"({factor:4.1f}x, {item['frames']} cadre)")
