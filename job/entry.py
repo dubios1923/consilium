@@ -1,7 +1,8 @@
 """Dispecer: aceeași imagine servește și launcher-ul, și job-ul.
 
-`CONSILIUM_ROLE=launcher` pornește serviciul HTTP care primește evenimentele;
-orice altceva rulează pipeline-ul pentru un singur obiect și iese.
+`CONSILIUM_ROLE=launcher` pornește serviciul care primește evenimentele,
+`dashboard` pagina de inspecție, orice altceva rulează pipeline-ul pentru un
+singur obiect și iese.
 """
 
 from __future__ import annotations
@@ -12,11 +13,14 @@ import sys
 
 def main() -> int:
     role = os.environ.get("CONSILIUM_ROLE", "job")
-    if role == "launcher":
+    if role in ("launcher", "dashboard"):
         import uvicorn
 
+        target = (
+            "job.launcher:app" if role == "launcher" else "consilium.dashboard:app"
+        )
         uvicorn.run(
-            "job.launcher:app",
+            target,
             host="0.0.0.0",
             port=int(os.environ.get("PORT", "8080")),
             log_level="info",

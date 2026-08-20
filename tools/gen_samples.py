@@ -1152,6 +1152,92 @@ def make_scanned(source: Path, target: Path, seed: int) -> None:
 
 
 # --------------------------------------------------------------------------
+# Document care NU este lista de plata
+#
+# Serveste gate-ului de intrare: fara un negativ, triajul nu poate fi demonstrat
+# decat pe un document real al cuiva. Contine exact tiparele care trebuie sa NU
+# declanseze pipeline-ul — hotarare de adunare generala, fara tabel de
+# repartizare pe apartamente.
+# --------------------------------------------------------------------------
+
+AGA_RESOLUTIONS = [
+    (
+        "Aprobarea execuției bugetare pentru exercițiul financiar încheiat, "
+        "prezentată de comitetul executiv."
+    ),
+    (
+        "Aprobarea bugetului de venituri și cheltuieli pentru anul în curs, cu "
+        "menținerea cotei de contribuție la fondul de reparații."
+    ),
+    (
+        "Mandatarea președintelui asociației pentru semnarea contractului de "
+        "service al ascensorului, pe o durată de 24 de luni."
+    ),
+    (
+        "Aprobarea constituirii unui fond de reparații suplimentar pentru "
+        "reabilitarea instalației de distribuție a apei calde."
+    ),
+    (
+        "Stabilirea programului de audiențe al administratorului: marți și joi, "
+        "între orele 17:00 și 19:00."
+    ),
+]
+
+
+def render_not_a_payment_list(path: Path) -> None:
+    """Randeaza o hotarare AGA fictiva, ca negativ pentru gate-ul de intrare."""
+    style = styles()
+    body = ParagraphStyle(
+        "aga_body", fontName=FONT_REGULAR, fontSize=10.5, leading=15.5,
+        alignment=4, spaceAfter=8,
+    )
+    doc = SimpleDocTemplate(
+        str(path),
+        pagesize=A4,
+        leftMargin=25 * mm, rightMargin=25 * mm,
+        topMargin=22 * mm, bottomMargin=20 * mm,
+        title="Hotărâre a adunării generale",
+        author="Consilium – generator de date sintetice",
+        invariant=1,
+    )
+    items = "".join(
+        f"<br/><b>Art. {index}.</b> {text}"
+        for index, text in enumerate(AGA_RESOLUTIONS, start=1)
+    )
+    story: list[Any] = [
+        Paragraph(HEADER_META["association_ref"], style["sub"]),
+        Paragraph(f"{HEADER_META['address']} · CIF {HEADER_META['cif']}", style["sub"]),
+        Spacer(1, 16),
+        Paragraph("HOTĂRÂREA nr. 4 / 18.11.2025", style["title"]),
+        Paragraph("a adunării generale a proprietarilor", style["section"]),
+        Paragraph(
+            "Adunarea generală a proprietarilor, întrunită statutar în data de "
+            "18.11.2025, la sediul asociației, în prezența a 21 din cei 28 de "
+            "proprietari, cu respectarea cvorumului prevăzut de Legea nr. "
+            "196/2018, adoptă următoarele:",
+            body,
+        ),
+        Paragraph(items, body),
+        Spacer(1, 14),
+        Paragraph(
+            "Prezenta hotărâre a fost adoptată cu 19 voturi „pentru”, 2 voturi "
+            "„împotrivă” și nicio abținere, și se afișează la avizierul "
+            "asociației.",
+            body,
+        ),
+        Spacer(1, 26),
+        Paragraph("Președinte al asociației", style["sub"]),
+        Paragraph("Secretar de ședință", style["sub"]),
+        Spacer(1, 18),
+        Paragraph(
+            "DOCUMENT FICTIV, GENERAT AUTOMAT PENTRU TESTAREA APLICAȚIEI CONSILIUM.",
+            style["note"],
+        ),
+    ]
+    doc.build(story)
+
+
+# --------------------------------------------------------------------------
 # Intrare
 # --------------------------------------------------------------------------
 
@@ -1277,6 +1363,18 @@ def main() -> None:
         "samples": summary,
         "findings": all_findings,
     }
+
+    negative = out_dir / "sample_not_a_payment_list.pdf"
+    render_not_a_payment_list(negative)
+    summary[negative.name] = {
+        "variant": "negativ",
+        "note": (
+            "Nu este listă de plată. Serveşte gate-ului de intrare: trebuie "
+            "respins la triaj, fără să pornească extracția."
+        ),
+        "expected_triage": "rejected",
+    }
+    print(f"scris {negative}  (negativ pentru gate-ul de intrare)")
 
     findings_path = out_dir / "expected_findings.json"
     findings_path.write_text(

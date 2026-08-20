@@ -26,6 +26,7 @@ BUCKET="${BUCKET:-consilium-intake-ab7x21}"
 JOB="${JOB:-consilium-audit}"
 LAUNCHER="${LAUNCHER:-consilium-launcher}"
 TRIGGER="${TRIGGER:-consilium-intake}"
+DASHBOARD="${DASHBOARD:-consilium-dashboard}"
 SA_NAME="${SA_NAME:-consilium-agent}"
 
 # Livrarea pe email e opțională. Se activează doar dacă ambele sunt prezente în
@@ -141,6 +142,14 @@ retry gcloud projects add-iam-policy-binding "$PROJECT" \
   --member="serviceAccount:${EVENTARC_SA}" --role=roles/eventarc.serviceAgent \
   --condition=None --quiet >/dev/null
 
+say "pagina de inspecție (read-only, publică)"
+# Publică pentru că e cerință de submisie să existe un URL pe care se poate da
+# click. Nu are nicio rută care modifică ceva, iar datele expuse sunt sintetice.
+gcloud run deploy "$DASHBOARD" \
+  --source . --region="$REGION" --project="$PROJECT" \
+  --service-account="$SA" --allow-unauthenticated \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT},CONSILIUM_ROLE=dashboard"
+
 say "declanșator Eventarc"
 if gcloud eventarc triggers describe "$TRIGGER" --location="$REGION" \
      --project="$PROJECT" >/dev/null 2>&1; then
@@ -166,3 +175,4 @@ say "gata"
 echo "job     : $JOB ($REGION)"
 echo "launcher: $(gcloud run services describe "$LAUNCHER" --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
 echo "trigger : $TRIGGER pe gs://${BUCKET}, prefixul output/ ignorat în cod"
+echo "pagina  : $(gcloud run services describe "$DASHBOARD" --region="$REGION" --project="$PROJECT" --format='value(status.url)')"

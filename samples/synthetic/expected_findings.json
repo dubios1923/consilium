@@ -198,6 +198,11 @@
       "derived_from": "sample_penalties.pdf",
       "layout": "alternativ",
       "note": "Aceleași date și aceleași constatări plantate, alt layout: alte denumiri de antet, altă ordine a coloanelor, abrevieri, tabelul de cheltuieli după cel de apartamente, două pagini."
+    },
+    "sample_not_a_payment_list.pdf": {
+      "variant": "negativ",
+      "note": "Nu este listă de plată. Serveşte gate-ului de intrare: trebuie respins la triaj, fără să pornească extracția.",
+      "expected_triage": "rejected"
     }
   },
   "findings": [

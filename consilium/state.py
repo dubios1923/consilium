@@ -131,6 +131,16 @@ class AuditStore(ABC):
     @abstractmethod
     def history(self, association_ref: str) -> list[AuditRecord]: ...
 
+    @abstractmethod
+    def list_recent(self, limit: int = 50) -> list[AuditRecord]:
+        """Cele mai recente audituri, cel mai nou primul.
+
+        Face parte din contract, nu doar din implementarea Firestore: pagina de
+        inspectie depinde de ea, iar un dublu de test fara ea ar da o pagina
+        goala in loc de un esec vizibil.
+        """
+        ...
+
     # ---- operații compuse, comune tuturor implementărilor ----
 
     def open_audit(
@@ -289,7 +299,15 @@ class InMemoryAuditStore(AuditStore):
             for record in self._records.values()
             if record.association_ref == association_ref
         ]
-        return sorted(matching, key=lambda record: (record.period or "", record.created_at))
+        return sorted(
+            matching, key=lambda record: (record.period or "", record.created_at)
+        )
+
+    def list_recent(self, limit: int = 50) -> list[AuditRecord]:
+        ordered = sorted(
+            self._records.values(), key=lambda record: record.created_at, reverse=True
+        )
+        return [AuditRecord.from_dict(r.to_dict()) for r in ordered[:limit]]
 
 
 class FirestoreAuditStore(AuditStore):
@@ -324,7 +342,6 @@ class FirestoreAuditStore(AuditStore):
         return sorted(records, key=lambda r: (r.period or "", r.created_at))
 
     def list_recent(self, limit: int = 50) -> list[AuditRecord]:
-        """Pentru UI-ul de inspecție: cele mai recente audituri."""
         from google.cloud import firestore
 
         query = (
